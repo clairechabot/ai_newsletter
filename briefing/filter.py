@@ -36,11 +36,25 @@ def _score_items(items, interests):
             out[items[idx].id] = score
     return out
 
-def _curate(items, interests):
-    """Claude's picks in its preferred order, or None on failure."""
-    steer = f"Reader leans toward: {', '.join(interests)}.\n" if interests else ""
-    prompt = (steer + "Pick the genuinely most interesting/important numbered items.\n"
-              "Return ONLY JSON: {\"keep\": [<index>, ...]}.\n\n" + _catalogue(items))
+def _curate(items, interests, target=25):
+    """Claude's picks in its preferred order, or None on failure.
+
+    The brief: the day's biggest, most widely discussed AI developments first,
+    then anything touching the reader's interests, up to `target` stories."""
+    lean = (f"Always include stories touching these interests, even if smaller news: "
+            f"{'; '.join(interests)}.\n") if interests else ""
+    prompt = (
+        f"You curate a daily AI briefing. From the numbered items pick up to {target} "
+        "for today's edition.\n"
+        "First the hottest topics: the biggest, most widely discussed developments "
+        "(major model releases and price changes, large funding rounds and acquisitions, "
+        "regulation, notable research, market and platform moves).\n"
+        + lean +
+        "Prefer substance over hype; skip thin promotional posts. When several items "
+        "report the same news, keep only the best one.\n"
+        "List the chosen indices most important first. Return ONLY JSON: "
+        '{"keep": [<index>, ...]}\n\n' + _catalogue(items)
+    )
     data = claude_json(prompt, max_tokens=_max_tokens(items), context="filter:curate",
                        client_factory=lambda: _client())
     if data is None:
@@ -81,7 +95,7 @@ def apply_filter(items, cfg) -> list:
         kept.sort(key=lambda i: scores.get(i.id, 0), reverse=True)
         return kept[:cfg.max_items]
     if mode == "claude_curate":
-        picked = _curate(items, cfg.interests)
+        picked = _curate(items, cfg.interests, cfg.max_items)
         if picked is None:
             print("[filter] curation failed; falling back to 'recent'", flush=True)
             return _recent(items, cfg)

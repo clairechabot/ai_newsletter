@@ -80,3 +80,14 @@ def test_interests_threshold_is_configurable():
     with patch("briefing.filter._score_items", return_value=scores):
         assert {i.id for i in apply_filter(items, _cfg("interests"))} == {"0"}           # default 50
         assert {i.id for i in apply_filter(items, _cfg("interests", min_score=40))} == {"0", "1"}
+
+
+def test_curate_prompt_asks_for_hot_topics_plus_interests_up_to_max_items():
+    items = _items(3)
+    client = _client_returning({"keep": [2, 0]})
+    with patch("briefing.filter._client", return_value=client):
+        out = apply_filter(items, _cfg("claude_curate", interests=["AI in banking"], max_items=12))
+    prompt = client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "pick up to 12" in prompt and "hottest topics" in prompt
+    assert "AI in banking" in prompt and "same news, keep only the best one" in prompt
+    assert [i.id for i in out] == ["2", "0"]  # Claude's order, most important first
