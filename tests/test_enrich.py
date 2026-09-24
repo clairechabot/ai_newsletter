@@ -58,3 +58,14 @@ def test_api_error_falls_back_to_single_theme():
         themes = group_into_themes([_item("0")])
     assert themes[0]["name"] == "Today"
     assert boom.messages.create.call_count == 2  # retried once
+
+
+def test_tab_label_from_claude_or_shortened_name():
+    items = [_item("0"), _item("1")]
+    payload = {"themes": [{"name": "Building on someone else's platform", "tab": "Platform risk",
+                           "emoji": "X", "indices": [0]},
+                          {"name": "A very long theme name that overflows", "emoji": "Y", "indices": [1]}]}
+    with patch("briefing.enrich._client", return_value=_client(payload)):
+        themes = group_into_themes(items)
+    assert themes[0]["tab"] == "Platform risk"
+    assert themes[1]["tab"] == "A very long theme…"
