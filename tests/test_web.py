@@ -79,3 +79,15 @@ def test_web_priority_badges_and_reading_list():
     body = page.split("</style>")[1]
     assert "Read first today" in body and 'badge-first">Read first' in body
     assert "Competitor &lt;funding&gt;." in body and "<funding>" not in body
+
+def test_web_images_hero_thumb_and_textonly():
+    from datetime import datetime, timezone
+    from briefing.models import Item
+    from briefing.web import build_web_edition
+    mk = lambda t, **ex: Item.make(source="S", source_type="rss", title=t, url="https://x/" + t,
+                                   summary="s", published=datetime.now(timezone.utc), extra=ex)
+    items = [mk("a", priority="first", image="https://cdn/a.jpg"), mk("b", image="https://cdn/b.jpg"), mk("c")]
+    body = build_web_edition("E", [{"name": "T", "emoji": "X", "items": items}]).split("</style>")[1]
+    assert '<a class="hero" href="https://x/a"><img src="https://cdn/a.jpg"' in body
+    assert 'class="card has-thumb"' in body and 'src="https://cdn/b.jpg"' in body
+    assert body.count("<img") == 2 and 'referrerpolicy="no-referrer"' in body

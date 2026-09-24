@@ -5,6 +5,7 @@ from briefing.history import load_history, save_history, drop_seen, mark_seen
 from briefing.filter import apply_filter
 from briefing.enrich import group_into_themes
 from briefing.priority import prioritize, order_themes, reading_list
+from briefing.images import add_images
 from briefing.voice import compose_greeting, RECENT_KEEP
 from briefing.editions import pick_edition
 from briefing.email import build_html_email, send_email, top_pick_subject
@@ -26,6 +27,7 @@ def run(cfg, history_path="history.json", now=None) -> None:
     selected = apply_filter(fresh, cfg)
     print(f"[pipeline] {len(selected)} after filter ({cfg.filter_mode})", flush=True)
 
+    add_images(selected, cfg.images)    # optional: preview image per item
     prioritize(selected, cfg.priority)  # optional: labels read first / today / later
     themes = order_themes(group_into_themes(selected, cfg.voice))
     greeting = compose_greeting(cfg.voice, themes, recent=hist.get("recent_greetings"))

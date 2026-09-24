@@ -47,7 +47,14 @@ _CSS = css(
     ".card h3{margin:4px 0 8px;font-size:19px}"
     ".card a{color:$ink;text-decoration:none}.card a:hover{color:$cobalt;text-decoration:underline}"
     ".card p{margin:0;color:$muted}"
-    ".card img{width:100%;border-radius:8px;margin-top:10px}"
+    ".card .hero img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;"
+    "border-radius:8px;margin:0 0 12px}"
+    ".card.has-thumb{display:grid;grid-template-columns:132px minmax(0,1fr);gap:18px;"
+    "align-items:start}"
+    ".card.has-thumb:not(:has(>.thumb)){display:block}"
+    ".card .thumb img{display:block;width:132px;height:88px;object-fit:cover;border-radius:6px}"
+    "@media (max-width:560px){.card.has-thumb{grid-template-columns:88px minmax(0,1fr);gap:12px}"
+    ".card .thumb img{width:88px;height:60px}}"
     "footer{text-align:center;color:$muted;font-size:13px;margin-top:48px}"
     "footer a{color:$cobalt}"
     # Reading-priority labels (priority.py): orange = read first, cobalt = today.
@@ -98,17 +105,23 @@ def _reading_list(themes) -> str:
 
 def _card(item) -> str:
     href = escape(_safe_url(item.url), quote=True)
-    media = ""
-    if item.source_type == "youtube":
-        thumb = escape(_safe_url(item.extra.get("thumbnail", "")), quote=True)
-        if thumb:
-            media = f'<a href="{href}"><img src="{thumb}" alt=""></a>'
+    img = escape(_safe_url(item.extra.get("image") or item.extra.get("thumbnail", "")), quote=True)
     first = " card-first" if item.extra.get("priority") == "first" else ""
     why = item.extra.get("why")
     why_html = f'<p class="why"><b>Why it matters:</b> {escape(why)}</p>' if why else ""
-    return (f'<div class="card{first}"><div class="src">{_badge(item)}{escape(item.source)}</div>'
+    text = (f'<div class="src">{_badge(item)}{escape(item.source)}</div>'
             f'<h3><a href="{href}">{escape(item.title)}</a></h3>{why_html}'
-            f'<p>{escape(item.summary)}</p>{media}</div>')
+            f'<p>{escape(item.summary)}</p>')
+    # Hotlinked, so a publisher can break an image later: drop it rather than
+    # show a broken-image icon.
+    pic = (f'<img src="{img}" alt="" loading="lazy" referrerpolicy="no-referrer" '
+           f'onerror="this.parentNode.remove()">')
+    if img and (first or item.source_type == "youtube"):
+        return f'<div class="card{first}"><a class="hero" href="{href}">{pic}</a>{text}</div>'
+    if img:
+        return (f'<div class="card has-thumb{first}"><a class="thumb" href="{href}">{pic}</a>'
+                f'<div>{text}</div></div>')
+    return f'<div class="card{first}">{text}</div>'
 
 
 def build_web_edition(title, themes, *, greeting="", edition_label="",

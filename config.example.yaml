@@ -63,6 +63,15 @@ sources:
 #   context: |
 #     Acme builds ... for ... Competitors: ... Matters most: ... Not relevant: ...
 
+# images: give each story its preview picture, the one publishers declare for
+# link previews (og:image), or the image the feed already supplies. Only the
+# stories that ship are looked up, in parallel; no Claude cost. Images are
+# linked, not downloaded. Stories without one render text-only.
+# images:
+#   enabled: true
+#   timeout: 10   # seconds per article page
+#   workers: 8    # pages looked up in parallel
+
 # web: also publish a browsable HTML "web edition" + a dated archive into
 # `output_dir` (serve it with GitHub Pages — Settings → Pages → /docs).
 # edition_url is the public URL, linked from a "cover" email.
