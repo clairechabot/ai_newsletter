@@ -163,3 +163,15 @@ def test_email_images_hero_for_first_thumb_for_rest_escaped():
     assert 'class="hero" src="https://cdn/a.jpg?x=1&amp;y=&quot;2&quot;"' in body
     assert '<td class="thumb" width="100" valign="top">' in body and 'src="https://cdn/b.jpg"' in body
     assert "javascript:" not in body
+
+
+def test_empty_smtp_env_falls_back_to_gmail_defaults(monkeypatch):
+    from unittest.mock import patch, MagicMock
+    from briefing.email import send_email
+    for k, v in {"EMAIL_SENDER": "me@x.com", "EMAIL_PASSWORD": "pw", "EMAIL_RECIPIENT": "a@x.com",
+                 "SMTP_HOST": "", "SMTP_PORT": ""}.items():   # unset secrets arrive as ""
+        monkeypatch.setenv(k, v)
+    with patch("briefing.email.smtplib.SMTP") as smtp:
+        smtp.return_value.__enter__.return_value = MagicMock()
+        send_email("B", "<p/>")
+    assert smtp.call_args.args == ("smtp.gmail.com", 587)

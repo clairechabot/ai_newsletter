@@ -27,7 +27,7 @@ sources:
   - { type: rss, name: "The Rundown AI",   url: "https://rss.beehiiv.com/feeds/2R3C6Bt5wj.xml" }
   - { type: rss, name: "AINews (smol.ai)", url: "https://news.smol.ai/rss.xml" }
   - { type: rss, name: "Latent Space",     url: "https://www.latent.space/feed" }
-  - { type: rss, name: "Import AI",        url: "https://importai.substack.com/feed" }
+  - { type: rss, name: "Import AI",        url: "https://importai.substack.com/feed", proxy: true }  # Substack 403s GitHub runners
   - { type: rss, name: "AlphaSignal",      url: "https://alphasignal.ai/feed.xml" }
   - { type: rss, name: "Simon Willison",   url: "https://simonwillison.net/atom/entries/" }
   - { type: rss, name: "LangChain Blog",   url: "https://blog.langchain.com/rss.xml" }
@@ -35,7 +35,7 @@ sources:
   - { type: rss, name: "OpenAI News",      url: "https://openai.com/news/rss.xml" }
 
   # ── AI in finance, fintech & European startups ──
-  - { type: rss, name: "The FinTech Blueprint", url: "https://lex.substack.com/feed" }
+  - { type: rss, name: "The FinTech Blueprint", url: "https://lex.substack.com/feed", proxy: true }  # Substack 403s GitHub runners
   - { type: rss, name: "Fintechnews Switzerland", url: "https://fintechnews.ch/feed/" }
   - { type: rss, name: "Sifted",           url: "https://sifted.eu/feed" }
 

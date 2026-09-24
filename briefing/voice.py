@@ -26,10 +26,10 @@ voice doesn't settle into one stock opener. Replies that read like the model
 thinking aloud ("Let me...", "Here's a greeting:") are discarded.
 """
 from __future__ import annotations
+from briefing.llm import make_client
 import os
 import re
 from collections import Counter
-import anthropic
 
 RECENT_KEEP = 12  # how many past greetings to remember
 
@@ -46,7 +46,7 @@ MODEL = os.environ.get("BRIEFING_MODEL", "claude-sonnet-4-6")
 
 
 def _client():
-    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    return make_client()
 
 
 def is_enabled(voice) -> bool:

@@ -174,8 +174,9 @@ def send_email(title, html, subject=None, from_name="") -> None:
     recipients = _recipients()
     if not recipients:
         raise KeyError("EMAIL_RECIPIENT")
-    host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-    port = int(os.environ.get("SMTP_PORT", "587"))
+    # A secret that isn't set arrives from the workflow as "", not as missing.
+    host = os.environ.get("SMTP_HOST") or "smtp.gmail.com"
+    port = int(os.environ.get("SMTP_PORT") or 587)
     subject = subject or f"{title} - {datetime.now(timezone.utc).strftime('%b %d, %Y')}"
     # One message per reader, each addressed only to them, so a multi-reader
     # list never exposes everyone's address in a shared To: header.

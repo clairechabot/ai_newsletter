@@ -1,12 +1,11 @@
 from __future__ import annotations
 import os
-import anthropic
-from briefing.llm import claude_json
+from briefing.llm import claude_json, make_client
 from briefing.voice import theme_steer
 from briefing.web import tab_label
 
 def _client():
-    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    return make_client()
 
 def group_into_themes(items, voice=None) -> list:
     """Cluster items into 3-4 magazine-style themes. Returns

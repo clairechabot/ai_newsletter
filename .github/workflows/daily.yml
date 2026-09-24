@@ -50,6 +50,7 @@ jobs:
       - name: Run briefing
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}   # only for keys not scoped to one workspace
           EMAIL_SENDER:      ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD:    ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECIPIENT:   ${{ secrets.EMAIL_RECIPIENT }}   # one address or a comma-separated list

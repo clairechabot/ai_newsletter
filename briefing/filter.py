@@ -1,12 +1,11 @@
 from __future__ import annotations
 import os
-import anthropic
-from briefing.llm import claude_json
+from briefing.llm import claude_json, make_client
 
 SCORE_THRESHOLD = 50
 
 def _client():
-    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    return make_client()
 
 def _catalogue(items) -> str:
     # Short numeric indices, not 40-char sha1 ids: keeps the reply small enough
