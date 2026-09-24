@@ -102,3 +102,26 @@ def test_send_email_uses_subject_override(monkeypatch):
         smtp.return_value.__enter__.return_value = server
         send_email("B", "<p/>", subject="B | Lead story")
     assert "Subject: B | Lead story" in server.sendmail.call_args.args[2]
+
+def test_palette_applied_to_email():
+    from briefing.theme import PALETTE
+    html = build_html_email("The Edge", [{"name": "T", "emoji": "X", "items": [_item("H")]}])
+    for key in ("orange", "black", "cobalt"):
+        assert PALETTE[key] in html
+    assert "$" not in html.split("<style>")[1].split("</style>")[0]  # every placeholder filled
+
+def test_from_name_sets_sender_display_name(monkeypatch):
+    from unittest.mock import patch, MagicMock
+    from briefing.email import send_email
+    for k, v in {"EMAIL_SENDER": "me@x.com", "EMAIL_PASSWORD": "pw",
+                 "EMAIL_RECIPIENT": "a@x.com"}.items():
+        monkeypatch.setenv(k, v)
+    server = MagicMock()
+    with patch("briefing.email.smtplib.SMTP") as smtp:
+        smtp.return_value.__enter__.return_value = server
+        send_email("The Edge", "<p/>", from_name="The Edge")
+        send_email("The Edge", "<p/>")
+    first, second = (c.args[2] for c in server.sendmail.call_args_list)
+    assert "From: The Edge <me@x.com>" in first
+    assert "From: me@x.com" in second
+    assert server.sendmail.call_args_list[0].args[0] == "me@x.com"  # envelope stays bare

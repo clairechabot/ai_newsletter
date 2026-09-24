@@ -1,30 +1,66 @@
-# config.yaml — your live briefing config. Edit sources + interests below.
-# Required: briefing, filter, sources. Optional extensions (email/voice/web/
-# editions) are documented in config.example.yaml and default to off.
+# config.yaml — The Edge. Edit sources + interests below.
+# Required: briefing, filter, sources. Optional extensions are documented in
+# config.example.yaml and default to off.
 briefing:
-  title: "My Daily Briefing"
+  title: "The Edge"
 
 filter:
   mode: interests          # interests | recent | per_source_cap | claude_curate
   interests:
-    - "AI policy in Europe"
-    - "longevity research"
+    - "AI agents and AI engineering: frameworks, tooling, production deployment"
+    - "frontier model releases, capabilities and research breakthroughs"
+    - "AI in banking, wealth management, payments and capital markets"
+    - "fintech and AI startups in Switzerland and Europe, funding and M&A"
+    - "EU AI Act, AI regulation, policy and governance"
+    - "AI's impact on work, organisations and society"
   max_items: 25
   per_source_cap: 5
-  recency_hours: 24
+  # 48h rather than 24h: history.json stops repeats, and the wider window
+  # catches weekly letters and anything a late or failed run missed.
+  recency_hours: 48
 
 sources:
-  - { type: rss,  name: "BBC World", url: "http://feeds.bbci.co.uk/news/world/rss.xml" }
-  - { type: site, name: "Seedcamp", module: "seedcamp" }
-  # - { type: scrape, name: "Static Site", url: "https://example.com/news",
-  #     item_selector: ".post", title_selector: "h2 a", link_selector: "h2 a" }
-  # - { type: claude_fetch, name: "No-Feed Site", url: "https://example.com" }
-  # - { type: youtube, name: "Veritasium", channel_id: "UCxxxx" }
+  # ── Frontier tech & AI engineering (daily triage + deep dives) ──
+  - { type: rss, name: "TLDR AI",          url: "https://tldr.tech/api/rss/ai", timeout: 60 }  # slow host
+  - { type: rss, name: "The Rundown AI",   url: "https://rss.beehiiv.com/feeds/2R3C6Bt5wj.xml" }
+  - { type: rss, name: "AINews (smol.ai)", url: "https://news.smol.ai/rss.xml" }
+  - { type: rss, name: "Latent Space",     url: "https://www.latent.space/feed" }
+  - { type: rss, name: "Import AI",        url: "https://importai.substack.com/feed" }
+  - { type: rss, name: "AlphaSignal",      url: "https://alphasignal.ai/feed.xml" }
+  - { type: rss, name: "Simon Willison",   url: "https://simonwillison.net/atom/entries/" }
+  - { type: rss, name: "LangChain Blog",   url: "https://blog.langchain.com/rss.xml" }
+  - { type: rss, name: "Hugging Face Blog", url: "https://huggingface.co/blog/feed.xml" }
+  - { type: rss, name: "OpenAI News",      url: "https://openai.com/news/rss.xml" }
+
+  # ── AI in finance, fintech & European startups ──
+  - { type: rss, name: "The FinTech Blueprint", url: "https://lex.substack.com/feed" }
+  - { type: rss, name: "Fintechnews Switzerland", url: "https://fintechnews.ch/feed/" }
+  - { type: rss, name: "Sifted",           url: "https://sifted.eu/feed" }
+
+  # ── Society, work & platform power ──
+  - { type: rss, name: "One Useful Thing", url: "https://www.oneusefulthing.org/feed" }
+  - { type: rss, name: "Platformer",       url: "https://www.platformer.news/rss/" }
+  - { type: rss, name: "MIT Technology Review AI", url: "https://www.technologyreview.com/topic/artificial-intelligence/feed" }
+  - { type: rss, name: "Rest of World",    url: "https://restofworld.org/feed/latest/" }
+
+  # Tested, but left out to keep the mix tight. Uncomment to add:
+  # - { type: rss, name: "The Neuron",       url: "https://rss.beehiiv.com/feeds/N4eCstxvgX.xml" }  # overlaps The Rundown
+  # - { type: rss, name: "Techmeme",         url: "https://www.techmeme.com/feed.xml" }             # all of tech, noisy
+  # - { type: rss, name: "TechCrunch AI",    url: "https://techcrunch.com/category/artificial-intelligence/feed/" }
+  # - { type: rss, name: "Stratechery",      url: "https://stratechery.com/feed/" }                 # mostly paywalled
+  # - { type: rss, name: "Crunchbase News",  url: "https://news.crunchbase.com/feed/" }
+  # - { type: rss, name: "McKinsey Insights", url: "https://www.mckinsey.com/insights/rss" }        # broad, not AI-only
+  # No working public feed (email-only, paywalled, or blocked): The Batch, Evident
+  # Insights (The Brief), WatersTechnology, Risk.net, Fintech Brainfood, Garbage Day,
+  # Tech Policy Press (feed times out). claude_fetch can cover one if you need it.
+
+email:
+  from_name: "The Edge"    # sender name shown in Gmail
+
+web: { enabled: true, output_dir: "docs", edition_url: "https://clairechabot.github.io/ai_newsletter/" }
 
 # Optional extensions (uncomment to enable — see config.example.yaml for docs):
-# email:    { mode: cover }
 # voice:    { enabled: true, name: "Your editor's name", tone: "warm, cozy, slightly witty" }  # invent your own — see README
-# web:      { enabled: true, output_dir: "docs", edition_url: "https://YOURNAME.github.io/YOURREPO/" }
 # editions:
 #   - { key: morning, label: "Morning Edition", until_hour: 12 }
 #   - { key: evening, label: "Evening Edition" }

@@ -18,6 +18,7 @@ sources:
   - { type: rss,  name: "BBC World", url: "http://feeds.bbci.co.uk/news/world/rss.xml" }
   - { type: site, name: "Seedcamp", module: "seedcamp" }
   # - { type: rss,  name: "Atlas Obscura", url: "https://atlasobscura.com/feeds/latest", proxy: true }  # proxy: true routes bot-blocked feeds through a relay
+  # - { type: rss,  name: "Slow Feed", url: "https://example.com/rss", timeout: 60 }  # seconds; default 30
   # - { type: scrape, name: "Static Site", url: "https://example.com/news",
   #     item_selector: ".post", title_selector: "h2 a", link_selector: "h2 a" }
   # - { type: claude_fetch, name: "No-Feed Site", url: "https://example.com" }
@@ -30,9 +31,12 @@ sources:
 # links out to the web edition — pair it with `web.enabled: true` below.
 # email.subject: "date" (default) -> "My Daily Briefing - Sep 24, 2026".
 # "top_pick" -> "My Daily Briefing | <lead headline>", which gets more opens.
+# email.from_name: the sender name the inbox shows (e.g. "The Edge"); blank
+# shows the sending account's own name.
 # email:
 #   mode: cover
 #   subject: top_pick
+#   from_name: "The Edge"
 
 # voice: give your briefing an AI editor persona — entirely yours to invent.
 # When enabled it writes a short daily greeting and names the themes in that

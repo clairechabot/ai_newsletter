@@ -95,7 +95,7 @@ jobs:
         if: success()
         continue-on-error: true
         env:
-          EDITION_URL: ""    # e.g. "https://yourname.github.io/my-edition/"
+          EDITION_URL: "https://clairechabot.github.io/ai_newsletter/"
           EDITION_DEPLOY_TOKEN: ${{ secrets.EDITION_DEPLOY_TOKEN }}
           EDITION_REPO: ""   # same as above; only needed to kick a rebuild
         run: |

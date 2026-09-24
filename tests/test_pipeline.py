@@ -21,7 +21,7 @@ def test_run_dedups_filters_and_sends(tmp_path):
          patch("briefing.pipeline.group_into_themes",
                side_effect=lambda items, voice=None: [{"name": "T", "emoji": "X", "items": items}]), \
          patch("briefing.pipeline.send_email",
-               side_effect=lambda title, html, subject=None: sent.update(title=title, html=html)), \
+               side_effect=lambda title, html, **kw: sent.update(title=title, html=html)), \
          patch("briefing.pipeline.save_history") as save:
         run(_cfg(), history_path=hist_path)
     assert "b" in sent["html"] or "T" in sent["html"]

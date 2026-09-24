@@ -21,31 +21,34 @@ import glob
 import re
 from datetime import datetime, timezone
 from html import escape
+from briefing.theme import css
 
 _EDITION_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})-(.+)\.html$")
 
-_CSS = (
+_CSS = css(
     "*{box-sizing:border-box}"
-    "body{font-family:Georgia,'Times New Roman',serif;color:#1f2421;"
-    "background:#f4f1ea;margin:0;line-height:1.55}"
+    "body{font-family:Georgia,'Times New Roman',serif;color:$ink;"
+    "background:$white;margin:0;line-height:1.55}"
     ".wrap{max-width:760px;margin:0 auto;padding:0 20px 64px}"
-    "header.masthead{text-align:center;padding:40px 20px 24px;border-bottom:2px solid #2f3e34}"
+    "header.masthead{text-align:center;padding:40px 20px 24px;background:$black;"
+    "color:$white;border-bottom:5px solid $orange}"
     ".masthead h1{font-size:40px;margin:0;letter-spacing:1px}"
-    ".masthead .date{color:#6b7269;font-size:14px;margin-top:6px;"
+    ".masthead .date{color:$orange;font-size:14px;margin-top:6px;"
     "text-transform:uppercase;letter-spacing:2px}"
-    ".greeting{font-style:italic;color:#3c4a40;background:#eae5d8;border-radius:10px;"
-    "padding:16px 20px;margin:24px 0}"
+    ".greeting{font-style:italic;color:$ink;background:$orange_tint;"
+    "border-left:4px solid $cobalt;border-radius:0 10px 10px 0;padding:16px 20px;margin:24px 0}"
     ".theme-title{font-size:24px;font-weight:700;margin:36px 0 4px;"
-    "padding-bottom:6px;border-bottom:1px solid #cfc9b8}"
-    ".card{background:#fff;border-radius:12px;padding:18px 20px;margin:16px 0;"
-    "box-shadow:0 1px 4px rgba(0,0,0,.07)}"
-    ".card .src{color:#7d8a7f;font-size:12px;text-transform:uppercase;letter-spacing:1px}"
+    "padding-bottom:6px;border-bottom:3px solid $orange}"
+    ".card{background:$white;border:1px solid $rule;border-radius:12px;padding:18px 20px;"
+    "margin:16px 0}"
+    ".card .src{color:$cobalt;font-size:12px;font-weight:700;text-transform:uppercase;"
+    "letter-spacing:1px}"
     ".card h3{margin:4px 0 8px;font-size:19px}"
-    ".card a{color:#1f2421;text-decoration:none}.card a:hover{text-decoration:underline}"
-    ".card p{margin:0;color:#444}"
+    ".card a{color:$ink;text-decoration:none}.card a:hover{color:$cobalt;text-decoration:underline}"
+    ".card p{margin:0;color:$muted}"
     ".card img{width:100%;border-radius:8px;margin-top:10px}"
-    "footer{text-align:center;color:#7d8a7f;font-size:13px;margin-top:48px}"
-    "footer a{color:#2f6f4f}"
+    "footer{text-align:center;color:$muted;font-size:13px;margin-top:48px}"
+    "footer a{color:$cobalt}"
 )
 
 
@@ -122,18 +125,18 @@ def build_archive_index(out_dir, site_title="The Archive") -> str:
                  f'{escape(label)}</a></li>')
     if not rows:
         rows = "<li>No past editions yet.</li>"
-    css = (
-        "body{font-family:Georgia,serif;color:#1f2421;background:#f4f1ea;"
+    style = css(
+        "body{font-family:Georgia,serif;color:$ink;background:$white;"
         "margin:0;line-height:1.6}.wrap{max-width:680px;margin:0 auto;padding:40px 20px}"
-        "h1{border-bottom:2px solid #2f3e34;padding-bottom:8px}"
-        "ul{list-style:none;padding:0}li{padding:8px 0;border-bottom:1px solid #ddd6c5}"
-        "a{color:#2f6f4f;text-decoration:none}a:hover{text-decoration:underline}"
-        "p.back a{color:#7d8a7f}"
+        "h1{border-bottom:3px solid $orange;padding-bottom:8px}"
+        "ul{list-style:none;padding:0}li{padding:8px 0;border-bottom:1px solid $rule}"
+        "a{color:$cobalt;text-decoration:none}a:hover{text-decoration:underline}"
+        "p.back a{color:$muted}"
     )
     html = (
         '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        f'<title>{escape(site_title)} — Archive</title><style>{css}</style></head>'
+        f'<title>{escape(site_title)} — Archive</title><style>{style}</style></head>'
         f'<body><div class="wrap"><h1>{escape(site_title)} — Archive</h1>'
         f'<ul>{rows}</ul><p class="back"><a href="index.html">← Latest edition</a>'
         '</p></div></body></html>'

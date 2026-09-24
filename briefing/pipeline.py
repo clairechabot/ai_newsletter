@@ -43,7 +43,7 @@ def run(cfg, history_path="history.json", now=None) -> None:
                             cover=(cfg.email_mode == "cover"),
                             preheader=greeting or lead)
     subject = top_pick_subject(title, themes) if cfg.email_subject == "top_pick" else None
-    send_email(title, html, subject=subject)
+    send_email(title, html, subject=subject, from_name=cfg.email_from_name)
 
     mark_seen(hist, fresh)
     if greeting:

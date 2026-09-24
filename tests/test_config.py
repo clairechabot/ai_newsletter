@@ -68,3 +68,18 @@ def test_email_subject_defaults_and_validates(tmp_path):
     p.write_text(base + "email: {subject: shouty}\n")
     with pytest.raises(ConfigError):
         load_config(str(p))
+
+def test_from_name_defaults_blank(tmp_path):
+    from briefing.config import load_config
+    base = 'filter: {mode: recent}\nsources: [{type: rss, name: X, url: "http://x"}]\n'
+    p = tmp_path / "c.yaml"
+    p.write_text(base)
+    assert load_config(str(p)).email_from_name == ""
+    p.write_text(base + 'email: {from_name: "The Edge"}\n')
+    assert load_config(str(p)).email_from_name == "The Edge"
+
+def test_repo_config_loads():
+    # The live config.yaml must always parse and validate.
+    from briefing.config import load_config
+    cfg = load_config("config.yaml")
+    assert cfg.title and cfg.sources

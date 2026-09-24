@@ -7,7 +7,10 @@ render (email + optional web edition).
 ## Optional features (all off by default, config-driven)
 - **email.mode** (`email.py`): `full` emails everything; `cover` emails a short cover + TOC that
   links to the web edition. `EMAIL_RECIPIENT` may be a comma-separated list (each reader gets
-  their own message). `email.subject: top_pick` puts the lead headline in the subject line.
+  their own message). `email.subject: top_pick` puts the lead headline in the subject line;
+  `email.from_name` sets the inbox sender name.
+- **palette** (`theme.py`): every colour the email and web edition use lives in `PALETTE`; CSS in
+  `email.py` / `web.py` references `$name` placeholders filled by `theme.css()`.
 - **voice** (`voice.py`): an editor persona that writes the daily greeting and steers theme names.
   Always fails soft (no greeting on any error / when disabled). Recent greetings are kept in
   `history.json` (`recent_greetings`) and fed back as an avoid-list for variety.

@@ -4,21 +4,32 @@ import smtplib
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formataddr
 from html import escape
+from briefing.theme import css
 
-_CSS = (
-    "body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f5f5f7;margin:0}"
+_CSS = css(
+    "body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:$paper;"
+    "color:$ink;margin:0}"
     ".wrapper{max-width:640px;margin:0 auto;padding:24px}"
-    ".header h1{margin:0 0 4px}.date{color:#888;font-size:13px}"
-    ".theme-title{font-size:18px;font-weight:700;margin:24px 0 8px}"
-    ".card{background:#fff;border-radius:10px;padding:14px;margin:10px 0;"
-    "box-shadow:0 1px 3px rgba(0,0,0,.08)}"
-    ".card a{color:#1a1a1a;text-decoration:none;font-weight:600}"
-    ".src{color:#999;font-size:12px}.footer{color:#aaa;font-size:12px;margin-top:24px}"
-    ".greeting{font-style:italic;color:#444;margin:8px 0 16px}"
-    ".readmore{display:inline-block;margin:16px 0;padding:10px 18px;background:#2f6f4f;"
-    "color:#fff;border-radius:8px;text-decoration:none;font-weight:600}"
-    ".toc{color:#666;font-size:14px}.toc li{margin:2px 0}"
+    ".header{background:$black;border-bottom:4px solid $orange;border-radius:10px 10px 0 0;"
+    "padding:20px 22px}"
+    ".header h1{margin:0 0 4px;color:$white;letter-spacing:.5px}"
+    ".date{color:$orange;font-size:13px;text-transform:uppercase;letter-spacing:1.5px}"
+    ".theme-title{font-size:18px;font-weight:700;margin:24px 0 8px;color:$ink;"
+    "border-left:4px solid $orange;padding-left:10px}"
+    ".card{background:$white;border:1px solid $rule;border-radius:10px;padding:14px;"
+    "margin:10px 0}"
+    ".card a{color:$ink;text-decoration:none;font-weight:600}"
+    ".card p{color:$muted}"
+    ".src{color:$cobalt;font-size:12px;font-weight:700;text-transform:uppercase;"
+    "letter-spacing:.5px}"
+    ".footer{color:$muted;font-size:12px;margin-top:24px}"
+    ".greeting{font-style:italic;color:$ink;background:$orange_tint;"
+    "border-left:3px solid $cobalt;padding:12px 16px;margin:16px 0}"
+    ".readmore{display:inline-block;margin:16px 0;padding:10px 18px;background:$orange;"
+    "color:$black;border-radius:8px;text-decoration:none;font-weight:700}"
+    ".toc{color:$ink;font-size:14px}.toc li{margin:2px 0}.toc li::marker{color:$cobalt}"
 )
 
 def _safe_url(url) -> str:
@@ -96,8 +107,10 @@ def top_pick_subject(title, themes, limit=60) -> str:
         lead = lead[:limit].rsplit(" ", 1)[0].rstrip(",;:-") + "…"
     return f"{title} | {lead}"
 
-def send_email(title, html, subject=None) -> None:
-    """`subject` overrides the default "<title> - <date>" subject line."""
+def send_email(title, html, subject=None, from_name="") -> None:
+    """`subject` overrides the default "<title> - <date>" subject line.
+    `from_name` is the sender name the inbox shows (e.g. "The Edge");
+    blank shows the mailbox's own account name."""
     sender = os.environ["EMAIL_SENDER"]
     password = os.environ["EMAIL_PASSWORD"]
     recipients = _recipients()
@@ -113,7 +126,7 @@ def send_email(title, html, subject=None) -> None:
         for rcpt in recipients:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
-            msg["From"] = sender
+            msg["From"] = formataddr((from_name, sender)) if from_name else sender
             msg["To"] = rcpt
             msg.attach(MIMEText(html, "html", "utf-8"))
             server.sendmail(sender, [rcpt], msg.as_string())

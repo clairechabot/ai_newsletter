@@ -29,3 +29,10 @@ def test_proxy_feed_uses_validated_fallback():
         items = fetch_rss(cfg, recency_hours=24)
     assert len(items) == 1
     assert fwf.call_args.kwargs["validate"] is not None
+
+def test_per_feed_timeout_passed_through():
+    cfg = {"type": "rss", "name": "Slow", "url": "http://x/rss", "timeout": 60}
+    with patch("briefing.sources.rss.fetch", return_value=MagicMock(content=b"")) as f, \
+         patch("briefing.sources.rss.feedparser.parse", return_value=_fake_parsed()):
+        fetch_rss(cfg)
+    assert f.call_args.kwargs["timeout"] == 60
