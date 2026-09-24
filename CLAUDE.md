@@ -11,8 +11,8 @@ render (email + optional web edition).
   `email.from_name` sets the inbox sender name.
 - **priority** (`priority.py`): one Claude call after filtering labels each item `first` /
   `today` / `later` (in `item.extra["priority"]`, plus `extra["why"]`) against a company profile
-  in `priority.context`; themes are re-sorted by it and both renderers show badges and a
-  "Read first today" list. Fails soft to unlabeled items.
+  in `priority.context`; themes are re-sorted by it, the email opens with a "Read first today" list
+  and the web edition with Read first / Read today cards. Fails soft to unlabeled items.
 - **images** (`images.py`): after filtering, sets `item.extra["image"]` from the feed's own media
   (RSS `media:content` / enclosures, YouTube thumbnails) or the article's `og:image`. Fails soft per
   item. Renderers show a large image on "Read first" / video cards and a thumbnail on the rest.
@@ -21,8 +21,12 @@ render (email + optional web edition).
 - **voice** (`voice.py`): an editor persona that writes the daily greeting and steers theme names.
   Always fails soft (no greeting on any error / when disabled). Recent greetings are kept in
   `history.json` (`recent_greetings`) and fed back as an avoid-list for variety.
-- **web** (`web.py`): builds a browsable `docs/index.html`, a permanent `docs/editions/<date>-<slot>.html`,
-  and rebuilds `docs/archive.html`. Served by GitHub Pages (`/docs`) or pushed to a separate repo.
+- **web** (`web.py`): builds `docs/index.html` (reading list on top, a sticky tab bar with one tab
+  per section using the short `theme["tab"]` label, priority chips, and one horizontally scrolling
+  card deck per section), a permanent `docs/editions/<date>-<slot>.html` that embeds its stories as
+  JSON (`<script id="edition-data">`), and rebuilds `docs/archive.html` from those embedded rows:
+  every story ever sent, searchable, filterable, grouped by week. Served by GitHub Pages (`/docs`).
+  All markup is server-rendered; the inline JS only wires tabs, chips, arrows and the archive filters.
 - **editions** (`editions.py`): AM/PM editions chosen by local hour; match the cron in `daily.yml`.
 
 ## Adding a source when asked (decision order)

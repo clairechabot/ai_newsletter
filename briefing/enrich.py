@@ -3,6 +3,7 @@ import os
 import anthropic
 from briefing.llm import claude_json
 from briefing.voice import theme_steer
+from briefing.web import tab_label
 
 def _client():
     return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
@@ -22,15 +23,16 @@ def group_into_themes(items, voice=None) -> list:
     prompt = (
         "You are the editor of a witty daily briefing.\n"
         "Group the numbered items into 3-4 creative theme names. Every item "
-        "belongs to exactly one theme." + theme_steer(voice) + " Return ONLY "
-        "JSON, no fences:\n"
-        '{"themes": [{"name": "Theme", "emoji": "X", "indices": [0,3]}]}\n\n'
+        "belongs to exactly one theme." + theme_steer(voice) + " Give each theme "
+        "a short \"tab\" label too (at most 20 characters, plain words, no emoji) for "
+        "a navigation bar. Return ONLY JSON, no fences:\n"
+        '{"themes": [{"name": "Theme", "tab": "Short label", "emoji": "X", "indices": [0,3]}]}\n\n'
         + catalogue
     )
     data = claude_json(prompt, max_tokens=min(4000, 400 + 8 * len(items)),
                        context="enrich", client_factory=lambda: _client())
     # Theming is best-effort: never drop the briefing over a bad LLM response.
-    fallback = [{"name": "Today", "emoji": "*", "items": list(items)}]
+    fallback = [{"name": "Today", "emoji": "*", "tab": "Today", "items": list(items)}]
     if data is None:
         return fallback
     out, used = [], set()
@@ -44,10 +46,11 @@ def group_into_themes(items, voice=None) -> list:
                 chosen.append(items[idx])
         if chosen:
             out.append({"name": str(theme["name"]), "emoji": str(theme.get("emoji") or "*"),
+                        "tab": tab_label(str(theme.get("tab") or theme["name"])),
                         "items": chosen})
     leftovers = [i for n, i in enumerate(items) if n not in used]
     if not out:
         return fallback
     if leftovers:
-        out.append({"name": "Also Today", "emoji": "*", "items": leftovers})
+        out.append({"name": "Also Today", "emoji": "*", "tab": "Also today", "items": leftovers})
     return out

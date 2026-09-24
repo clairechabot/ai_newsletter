@@ -36,7 +36,9 @@ def run(cfg, history_path="history.json", now=None) -> None:
     if cfg.web.get("enabled"):
         out_dir = cfg.web.get("output_dir", "docs")
         page = build_web_edition(title, themes, greeting=greeting,
-                                 edition_label=slot.get("label", ""))
+                                 edition_label=slot.get("label", ""),
+                                 date_str=now.strftime("%A %d %B %Y").replace(" 0", " "),
+                                 edition_date=now.strftime("%Y-%m-%d"), slot_key=slot["key"])
         paths = save_edition(out_dir, page, now.strftime("%Y-%m-%d"), slot["key"])
         build_archive_index(out_dir, site_title=cfg.title)
         print(f"[pipeline] web edition -> {paths['edition']}", flush=True)
