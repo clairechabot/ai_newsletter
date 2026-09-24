@@ -165,23 +165,54 @@ def top_pick_subject(title, themes, limit=60) -> str:
         lead = lead[:limit].rsplit(" ", 1)[0].rstrip(",;:-") + "…"
     return f"{title} | {lead}"
 
+def _smtp_settings() -> tuple:
+    """(sender, password, host, port) from the environment. A secret that isn't
+    set arrives from the workflow as "", not as missing."""
+    sender = os.environ["EMAIL_SENDER"]
+    password = os.environ["EMAIL_PASSWORD"]
+    host = os.environ.get("SMTP_HOST") or "smtp.gmail.com"
+    port = int(os.environ.get("SMTP_PORT") or 587)
+    return sender, password, host, port
+
+
+def _login(server, sender, password) -> None:
+    try:
+        server.login(sender, password)
+    except smtplib.SMTPAuthenticationError as e:
+        hint = ""
+        if b"Application-specific password" in e.smtp_error or e.smtp_code == 534:
+            hint = (" Gmail needs a 16-character App Password in EMAIL_PASSWORD, not the "
+                    "account password: https://myaccount.google.com/apppasswords")
+        raise RuntimeError(f"SMTP login failed for {sender}: {e.smtp_code} "
+                           f"{e.smtp_error.decode(errors='replace')}.{hint}") from e
+
+
+def check_login() -> bool:
+    """Log in to the mail server and disconnect, so a bad password fails the
+    run before any fetching or Claude spend. Skipped (returns False) when
+    the email settings aren't configured at all."""
+    if not os.environ.get("EMAIL_SENDER") or not os.environ.get("EMAIL_PASSWORD"):
+        return False
+    sender, password, host, port = _smtp_settings()
+    with smtplib.SMTP(host, port, timeout=30) as server:
+        server.ehlo(); server.starttls(); _login(server, sender, password)
+    print(f"[email] login ok as {sender} via {host}:{port}", flush=True)
+    return True
+
+
 def send_email(title, html, subject=None, from_name="") -> None:
     """`subject` overrides the default "<title> - <date>" subject line.
     `from_name` is the sender name the inbox shows (e.g. "The Edge");
     blank shows the mailbox's own account name."""
-    sender = os.environ["EMAIL_SENDER"]
-    password = os.environ["EMAIL_PASSWORD"]
+    sender, password, host, port = _smtp_settings()
     recipients = _recipients()
     if not recipients:
         raise KeyError("EMAIL_RECIPIENT")
-    # A secret that isn't set arrives from the workflow as "", not as missing.
-    host = os.environ.get("SMTP_HOST") or "smtp.gmail.com"
-    port = int(os.environ.get("SMTP_PORT") or 587)
     subject = subject or f"{title} - {datetime.now(timezone.utc).strftime('%b %d, %Y')}"
     # One message per reader, each addressed only to them, so a multi-reader
     # list never exposes everyone's address in a shared To: header.
     with smtplib.SMTP(host, port) as server:
-        server.ehlo(); server.starttls(); server.login(sender, password)
+        server.ehlo(); server.starttls(); _login(server, sender, password)
         for rcpt in recipients:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
