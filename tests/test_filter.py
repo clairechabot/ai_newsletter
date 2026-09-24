@@ -72,3 +72,11 @@ def test_claude_curate_by_index_and_falls_back():
     bad = _client_returning({"nope": 1}); bad.messages.create.return_value.content[0].text = "garbage"
     with patch("briefing.filter._client", return_value=bad):
         assert len(apply_filter(items, _cfg("claude_curate", max_items=2))) == 2
+
+
+def test_interests_threshold_is_configurable():
+    items = _items(3)
+    scores = {"0": 90, "1": 45, "2": 30}
+    with patch("briefing.filter._score_items", return_value=scores):
+        assert {i.id for i in apply_filter(items, _cfg("interests"))} == {"0"}           # default 50
+        assert {i.id for i in apply_filter(items, _cfg("interests", min_score=40))} == {"0", "1"}

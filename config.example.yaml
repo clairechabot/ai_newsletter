@@ -11,6 +11,7 @@ filter:
     - "AI policy in Europe"
     - "longevity research"
   max_items: 25
+  min_score: 50            # interests mode: keep stories scoring at least this (0-100); lower for fuller editions
   per_source_cap: 5
   recency_hours: 24
 
