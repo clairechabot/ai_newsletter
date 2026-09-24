@@ -1,10 +1,10 @@
 from __future__ import annotations
+from briefing.llm import make_client
 import os
 import json
 import re
 from datetime import datetime, timezone
 from urllib.parse import urljoin
-import anthropic
 from bs4 import BeautifulSoup
 from briefing.models import Item, normalize_url
 from briefing.sources._fetch import fetch_with_fallback as http_get
@@ -12,7 +12,7 @@ from briefing.sources._fetch import fetch_with_fallback as http_get
 MODEL = os.environ.get("BRIEFING_MODEL", "claude-sonnet-4-6")
 
 def _client():
-    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    return make_client()
 
 _PROMPT = (
     "Fetch this page and extract the main news/article headlines: {url}\n"

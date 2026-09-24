@@ -10,8 +10,21 @@ import anthropic
 MODEL = os.environ.get("BRIEFING_MODEL", "claude-sonnet-4-6")
 
 
+def make_client():
+    """The Anthropic client every step uses. A key that isn't scoped to one
+    workspace must name the workspace on each request (Anthropic returns 400
+    otherwise); set ANTHROPIC_WORKSPACE_ID (wrkspc_...) for such keys. Keys
+    created for a single workspace need nothing extra."""
+    headers = {}
+    workspace = (os.environ.get("ANTHROPIC_WORKSPACE_ID") or "").strip()
+    if workspace:
+        headers["anthropic-workspace-id"] = workspace
+    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"],
+                               default_headers=headers or None)
+
+
 def _client():
-    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    return make_client()
 
 
 def strip_fences(text) -> str:

@@ -21,8 +21,7 @@ is public.
 """
 from __future__ import annotations
 import os
-import anthropic
-from briefing.llm import claude_json
+from briefing.llm import claude_json, make_client
 
 TIERS = ("first", "today", "later")
 LABELS = {"first": "Read first", "today": "Read today", "later": "Later"}
@@ -30,7 +29,7 @@ _RANK = {t: n for n, t in enumerate(TIERS)}
 
 
 def _client():
-    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    return make_client()
 
 
 def is_enabled(cfg) -> bool:
