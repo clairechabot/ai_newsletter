@@ -1,16 +1,40 @@
 name: Daily Briefing
 on:
   schedule:
-    # GitHub queues on-the-hour crons behind everyone else's and often starts
-    # them 30-90 min late. An off-hour minute is delayed much less, so schedule
-    # a little before the time you want the email (06:23 UTC ~ lands by 07:00).
-    - cron: '23 6 * * *'   # ~07:00 UTC — your morning edition
-    # Add a second run for an AM/PM setup (match the `editions` in config.yaml):
-    # - cron: '23 15 * * *'  # ~16:00 UTC — your evening edition
+    # Target: the email in the inbox at 06:30 Zurich every morning.
+    # GitHub cron is UTC only and starts jobs a few minutes late (much more on
+    # the hour), and a run takes ~5 min, so the job starts at 06:13 local.
+    # Zurich switches between CEST (UTC+2) and CET (UTC+1), so both UTC times
+    # are listed and the `season` job skips the one that is wrong today.
+    - cron: '13 4 * * *'   # 06:13 Zurich in summer (CEST)
+    - cron: '13 5 * * *'   # 06:13 Zurich in winter (CET)
   workflow_dispatch:        # lets you trigger a run by hand from the Actions tab
 jobs:
-  run:
+  # Which of the two schedules is right today? (A manual run always goes ahead.)
+  season:
     runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          zone=$(TZ=Europe/Zurich date +%Z)   # CEST in summer, CET in winter
+          case "$SCHEDULE|$zone" in
+            "13 4 * * *|CET"|"13 5 * * *|CEST")
+              echo "Schedule '$SCHEDULE' belongs to the other season (Zurich is on $zone); skipping."
+              echo "run=false" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "Running (schedule '${SCHEDULE:-manual}', Zurich is on $zone)."
+              echo "run=true" >> "$GITHUB_OUTPUT" ;;
+          esac
+  run:
+    needs: season
+    if: needs.season.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    env:
+      TZ: Europe/Zurich     # datelines, edition filenames and AM/PM picks use local time
     permissions:
       contents: write       # needed to commit history.json + the web edition back
     steps:
