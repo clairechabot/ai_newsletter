@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+# Local-only config override, if you keep one outside the committed config.yaml
+config.local.yaml

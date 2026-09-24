@@ -1,0 +1,120 @@
+name: Daily Briefing
+on:
+  schedule:
+    # GitHub queues on-the-hour crons behind everyone else's and often starts
+    # them 30-90 min late. An off-hour minute is delayed much less, so schedule
+    # a little before the time you want the email (06:23 UTC ~ lands by 07:00).
+    - cron: '23 6 * * *'   # ~07:00 UTC — your morning edition
+    # Add a second run for an AM/PM setup (match the `editions` in config.yaml):
+    # - cron: '23 15 * * *'  # ~16:00 UTC — your evening edition
+  workflow_dispatch:        # lets you trigger a run by hand from the Actions tab
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # needed to commit history.json + the web edition back
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Run briefing
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EMAIL_SENDER:      ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD:    ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT:   ${{ secrets.EMAIL_RECIPIENT }}   # one address or a comma-separated list
+          SMTP_HOST:         ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:         ${{ secrets.SMTP_PORT }}
+          YOUTUBE_API_KEY:   ${{ secrets.YOUTUBE_API_KEY }}
+        run: python main.py
+
+      # Commit history.json (so nothing repeats) and, if the web edition is
+      # enabled in config.yaml, the regenerated docs/ (index + archive + dated
+      # edition). Non-fatal: a successful email must never be turned red by a
+      # push conflict. Operates on the current branch, so it works pre-merge.
+      # Only after a successful run, so a failed send never publishes an
+      # edition nobody was emailed.
+      - name: Commit history + web edition
+        if: success()
+        continue-on-error: true
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          [ -f history.json ]      && git add history.json
+          [ -f docs/index.html ]   && git add docs/index.html
+          [ -f docs/archive.html ] && git add docs/archive.html
+          [ -d docs/editions ]     && git add docs/editions/
+          if git diff --cached --quiet; then
+            echo "Nothing changed — nothing to commit."; exit 0
+          fi
+          git commit -m "chore: update history + edition [skip ci]"
+          git pull --rebase -X ours origin "${GITHUB_REF_NAME}" || git rebase --abort || true
+          git push origin "HEAD:${GITHUB_REF_NAME}" || echo "::warning::history/docs push skipped"
+
+      # OPTIONAL: publish the web edition to a SEPARATE public GitHub Pages repo
+      # (keeps this repo private). Create the public repo, add a fine-grained PAT
+      # with Contents:write on it as the secret EDITION_DEPLOY_TOKEN, and set
+      # EDITION_REPO below to "owner/repo". Skips quietly if the secret is absent.
+      - name: Publish web edition to public site
+        if: success()
+        continue-on-error: true
+        env:
+          EDITION_DEPLOY_TOKEN: ${{ secrets.EDITION_DEPLOY_TOKEN }}
+          EDITION_REPO: ""   # e.g. "yourname/my-edition" — leave blank to skip
+        run: |
+          if [ -z "$EDITION_DEPLOY_TOKEN" ] || [ -z "$EDITION_REPO" ]; then
+            echo "No EDITION_DEPLOY_TOKEN / EDITION_REPO — skipping public publish."; exit 0
+          fi
+          [ -f docs/index.html ] || { echo "No docs/index.html to publish."; exit 0; }
+          rm -rf /tmp/edition
+          git clone "https://x-access-token:${EDITION_DEPLOY_TOKEN}@github.com/${EDITION_REPO}.git" /tmp/edition
+          cp docs/index.html /tmp/edition/index.html
+          [ -f docs/archive.html ] && cp docs/archive.html /tmp/edition/archive.html
+          if [ -d docs/editions ]; then
+            mkdir -p /tmp/edition/editions
+            cp docs/editions/*.html /tmp/edition/editions/ 2>/dev/null || true
+          fi
+          cd /tmp/edition
+          git config user.name  "briefing-bot"
+          git config user.email "briefing-bot@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || { git commit -m "Publish edition ${{ github.run_id }}"; git push; }
+
+      # OPTIONAL: confirm the edition actually went live. GitHub Pages builds
+      # occasionally stall; if the new page isn't served after ~3 minutes, push
+      # an empty commit to the public edition repo to kick a rebuild. Set
+      # EDITION_URL to your public site root (same value as web.edition_url in
+      # config.yaml). Skips quietly when blank.
+      - name: Verify web edition is live
+        if: success()
+        continue-on-error: true
+        env:
+          EDITION_URL: ""    # e.g. "https://yourname.github.io/my-edition/"
+          EDITION_DEPLOY_TOKEN: ${{ secrets.EDITION_DEPLOY_TOKEN }}
+          EDITION_REPO: ""   # same as above; only needed to kick a rebuild
+        run: |
+          [ -n "$EDITION_URL" ] || { echo "No EDITION_URL — skipping check."; exit 0; }
+          latest=$(ls -t docs/editions/*.html 2>/dev/null | head -1)
+          [ -n "$latest" ] || { echo "No edition written this run."; exit 0; }
+          url="${EDITION_URL%/}/editions/$(basename "$latest")"
+          for i in 1 2 3; do
+            sleep 60
+            if curl -fsS -o /dev/null "$url"; then echo "Live: $url"; exit 0; fi
+            echo "Not live yet ($i/3): $url"
+          done
+          echo "::warning::Edition not live after 3 min: $url"
+          if [ -n "$EDITION_DEPLOY_TOKEN" ] && [ -n "$EDITION_REPO" ]; then
+            rm -rf /tmp/rebuild
+            git clone --depth 1 "https://x-access-token:${EDITION_DEPLOY_TOKEN}@github.com/${EDITION_REPO}.git" /tmp/rebuild
+            cd /tmp/rebuild
+            git config user.name  "briefing-bot"
+            git config user.email "briefing-bot@users.noreply.github.com"
+            git commit --allow-empty -m "Rebuild Pages (edition not live)"
+            git push && echo "Pushed an empty commit to retrigger the Pages build."
+          fi

@@ -1,0 +1,30 @@
+# config.yaml — your live briefing config. Edit sources + interests below.
+# Required: briefing, filter, sources. Optional extensions (email/voice/web/
+# editions) are documented in config.example.yaml and default to off.
+briefing:
+  title: "My Daily Briefing"
+
+filter:
+  mode: interests          # interests | recent | per_source_cap | claude_curate
+  interests:
+    - "AI policy in Europe"
+    - "longevity research"
+  max_items: 25
+  per_source_cap: 5
+  recency_hours: 24
+
+sources:
+  - { type: rss,  name: "BBC World", url: "http://feeds.bbci.co.uk/news/world/rss.xml" }
+  - { type: site, name: "Seedcamp", module: "seedcamp" }
+  # - { type: scrape, name: "Static Site", url: "https://example.com/news",
+  #     item_selector: ".post", title_selector: "h2 a", link_selector: "h2 a" }
+  # - { type: claude_fetch, name: "No-Feed Site", url: "https://example.com" }
+  # - { type: youtube, name: "Veritasium", channel_id: "UCxxxx" }
+
+# Optional extensions (uncomment to enable — see config.example.yaml for docs):
+# email:    { mode: cover }
+# voice:    { enabled: true, name: "Your editor's name", tone: "warm, cozy, slightly witty" }  # invent your own — see README
+# web:      { enabled: true, output_dir: "docs", edition_url: "https://YOURNAME.github.io/YOURREPO/" }
+# editions:
+#   - { key: morning, label: "Morning Edition", until_hour: 12 }
+#   - { key: evening, label: "Evening Edition" }
