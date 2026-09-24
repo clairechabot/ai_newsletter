@@ -12,14 +12,15 @@ def _has_entries(resp) -> bool:
     return len(feedparser.parse(resp.content).entries) > 0
 
 def fetch_rss(cfg, recency_hours=24) -> list[Item]:
+    timeout = int(cfg.get("timeout", 30))  # optional per-feed override for slow hosts
     # Always go through the hardened fetch (browser UA + retries); feedparser's
     # own fetcher has neither and gets bot-walled more often.
     if cfg.get("proxy"):
         # Publisher blocks datacenter IPs (e.g. Cloudflare 403s on CI runners).
         # A 200 challenge page parses to zero entries, so that also falls back.
-        resp = fetch_with_fallback(cfg["url"], validate=_has_entries, timeout=30)
+        resp = fetch_with_fallback(cfg["url"], validate=_has_entries, timeout=timeout)
     else:
-        resp = fetch(cfg["url"], timeout=30)
+        resp = fetch(cfg["url"], timeout=timeout)
     parsed = feedparser.parse(resp.content)
     cutoff = datetime.now(timezone.utc) - timedelta(hours=recency_hours)
     out = []

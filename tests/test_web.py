@@ -57,3 +57,13 @@ def test_archive_index_empty(tmp_path):
     (out / "editions").mkdir(parents=True)
     html = build_archive_index(str(out))
     assert "No past editions yet." in html
+
+def test_palette_applied_to_web_and_archive(tmp_path):
+    from briefing.theme import PALETTE
+    from briefing.web import build_web_edition, build_archive_index
+    page = build_web_edition("The Edge", [])
+    archive = build_archive_index(str(tmp_path), site_title="The Edge")
+    for html in (page, archive):
+        style = html.split("<style>")[1].split("</style>")[0]
+        assert PALETTE["orange"] in style and PALETTE["cobalt"] in style
+        assert "$" not in style

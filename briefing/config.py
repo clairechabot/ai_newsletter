@@ -25,6 +25,7 @@ class Config:
     editions: list = field(default_factory=list)     # AM/PM schedule (editions.py)
     email_mode: str = "full"                         # "full" | "cover"
     email_subject: str = "date"                      # "date" | "top_pick"
+    email_from_name: str = ""                        # inbox sender name; "" = account name
 
 def load_config(path: str) -> Config:
     with open(path, "r", encoding="utf-8") as fh:
@@ -60,4 +61,5 @@ def load_config(path: str) -> Config:
         editions=raw.get("editions", []) or [],
         email_mode=email_mode,
         email_subject=email_subject,
+        email_from_name=str(email.get("from_name", "") or ""),
     )
