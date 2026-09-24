@@ -55,3 +55,25 @@ def test_run_no_fresh_items_skips_send(tmp_path):
          patch("briefing.pipeline.save_history"):
         run(_cfg(), history_path=str(tmp_path / "h.json"))
     send.assert_not_called()
+
+def test_run_prioritizes_before_theming_and_leads_with_read_first(tmp_path):
+    cfg = Config(title="B", filter_mode="recent", interests=[], max_items=5,
+                 per_source_cap=2, recency_hours=24,
+                 sources=[{"type": "rss", "name": "S", "url": "http://x"}],
+                 priority={"enabled": True, "context": "x"}, email_subject="top_pick")
+    def label(items, pcfg):
+        items[1].extra.update(priority="first", why="w")
+        return items
+    sent = {}
+    with patch("briefing.pipeline.fetch_all", return_value=[_item("a"), _item("b")]), \
+         patch("briefing.pipeline.load_history", return_value={"seen_ids": []}), \
+         patch("briefing.pipeline.prioritize", side_effect=label) as pr, \
+         patch("briefing.pipeline.group_into_themes",
+               side_effect=lambda items, voice=None: [{"name": "T", "emoji": "X", "items": list(items)}]), \
+         patch("briefing.pipeline.send_email",
+               side_effect=lambda title, html, **kw: sent.update(html=html, **kw)), \
+         patch("briefing.pipeline.save_history"):
+        run(cfg, history_path=str(tmp_path / "h.json"))
+    assert pr.call_args[0][1] == cfg.priority
+    assert "Read first today" in sent["html"]
+    assert sent["html"].index("badge-first") < sent["html"].index("http://x/a")  # b sorted first

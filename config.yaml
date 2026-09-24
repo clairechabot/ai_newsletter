@@ -7,6 +7,8 @@ briefing:
 filter:
   mode: interests          # interests | recent | per_source_cap | claude_curate
   interests:
+    - "AI for private capital: deal screening, due diligence, portfolio and loan monitoring tools"
+    - "verifiable, governed AI: citations, claim verification, audit trails, human approval"
     - "AI agents and AI engineering: frameworks, tooling, production deployment"
     - "frontier model releases, capabilities and research breakthroughs"
     - "AI in banking, wealth management, payments and capital markets"
@@ -56,6 +58,38 @@ sources:
 
 email:
   from_name: "The Edge"    # sender name shown in Gmail
+
+# Reading priority: labels every item "Read first", "Read today" or "Later"
+# for Khare, and puts a "Read first today" list at the top of each edition.
+# Distilled from the North Star (v3, 2026-09-19). This repo and the web
+# edition are PUBLIC, so this deliberately leaves out clients, pricing,
+# revenue, fundraising and anything else internal.
+priority:
+  enabled: true
+  org: "Khare"
+  max_first: 3
+  context: |
+    Khare Automations builds AI screening software for private capital. It turns a
+    pitch deck into a verified, decision-ready profile and verdict: every claim is
+    checked against independent sources, carries a status, and a named reviewer
+    approves every output. Khare never decides and never sends. It deploys hosted or
+    into the client's own cloud tenant. The long-term aim is to own the record of
+    what a fund decided, on what evidence, and how it turned out.
+    Next surface (planned, not built): downside monitoring for venture-debt lenders:
+    runway against burn, debt at cash-out, collateral coverage, threshold alerts and
+    pre-funding material-adverse-change checks.
+    Buyers: five to thirty person European VC funds, venture-debt lenders and family
+    offices that must defend every decision and cannot buy an enterprise platform.
+    Competitors and adjacent players: Intapp DealCloud and Celeste, Hebbia, V7 Go,
+    Affinity, Harmonic, Visible.vc, Rundit, Carta, Allvue, Juniper Square and
+    loan-monitoring vendors. Standalone deck extraction is commoditised (Deckmatch
+    wound down in September 2026).
+    Matters most: competitor launches, funding and moves down-market; AI adoption by
+    VCs, private credit and venture-debt lenders; verification, citations, audit
+    trails and evals for AI; agent reliability; data security and single-tenant
+    deployment; AI regulation touching finance (EU AI Act, FCA, FINMA); Swiss and
+    European startup funding programmes.
+    Not relevant: LP and quarterly reporting tools, consumer AI, crypto trading.
 
 web: { enabled: true, output_dir: "docs", edition_url: "https://clairechabot.github.io/ai_newsletter/" }
 

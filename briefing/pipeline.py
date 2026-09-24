@@ -4,6 +4,7 @@ from briefing.sources import fetch_all
 from briefing.history import load_history, save_history, drop_seen, mark_seen
 from briefing.filter import apply_filter
 from briefing.enrich import group_into_themes
+from briefing.priority import prioritize, order_themes, reading_list
 from briefing.voice import compose_greeting, RECENT_KEEP
 from briefing.editions import pick_edition
 from briefing.email import build_html_email, send_email, top_pick_subject
@@ -25,7 +26,8 @@ def run(cfg, history_path="history.json", now=None) -> None:
     selected = apply_filter(fresh, cfg)
     print(f"[pipeline] {len(selected)} after filter ({cfg.filter_mode})", flush=True)
 
-    themes = group_into_themes(selected, cfg.voice)
+    prioritize(selected, cfg.priority)  # optional: labels read first / today / later
+    themes = order_themes(group_into_themes(selected, cfg.voice))
     greeting = compose_greeting(cfg.voice, themes, recent=hist.get("recent_greetings"))
 
     # Web edition (optional): write the browsable page + permanent archive copy.
@@ -37,7 +39,9 @@ def run(cfg, history_path="history.json", now=None) -> None:
         build_archive_index(out_dir, site_title=cfg.title)
         print(f"[pipeline] web edition -> {paths['edition']}", flush=True)
 
-    lead = next((t["items"][0].title for t in themes if t.get("items")), "")
+    must = reading_list(themes)
+    lead = must[0].title if must else next(
+        (t["items"][0].title for t in themes if t.get("items")), "")
     html = build_html_email(title, themes, greeting=greeting,
                             edition_url=cfg.web.get("edition_url", ""),
                             cover=(cfg.email_mode == "cover"),

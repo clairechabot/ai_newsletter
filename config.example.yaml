@@ -49,6 +49,20 @@ sources:
 #   name: "Your editor's name"          # e.g. a persona you make up
 #   tone: "warm, cozy, slightly witty"  # describe personality + writing style
 
+# priority: label each item "Read first", "Read today" or "Later" for your
+# team, with a one-line "why it matters", and open each edition with a "Read
+# first today" list. `context` is a short profile of your company: what you
+# build, who buys it, who you compete with, what matters. It's sent to Claude
+# and shapes the "why" lines, which appear in the email and web edition, so keep
+# it to what you're comfortable publishing if your repo or site is public.
+# One extra Claude call per edition; fails soft (no labels) on any error.
+# priority:
+#   enabled: true
+#   org: "Acme"
+#   max_first: 3         # cap on "Read first" so it stays meaningful
+#   context: |
+#     Acme builds ... for ... Competitors: ... Matters most: ... Not relevant: ...
+
 # web: also publish a browsable HTML "web edition" + a dated archive into
 # `output_dir` (serve it with GitHub Pages — Settings → Pages → /docs).
 # edition_url is the public URL, linked from a "cover" email.

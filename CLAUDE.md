@@ -9,6 +9,10 @@ render (email + optional web edition).
   links to the web edition. `EMAIL_RECIPIENT` may be a comma-separated list (each reader gets
   their own message). `email.subject: top_pick` puts the lead headline in the subject line;
   `email.from_name` sets the inbox sender name.
+- **priority** (`priority.py`): one Claude call after filtering labels each item `first` /
+  `today` / `later` (in `item.extra["priority"]`, plus `extra["why"]`) against a company profile
+  in `priority.context`; themes are re-sorted by it and both renderers show badges and a
+  "Read first today" list. Fails soft to unlabeled items.
 - **palette** (`theme.py`): every colour the email and web edition use lives in `PALETTE`; CSS in
   `email.py` / `web.py` references `$name` placeholders filled by `theme.css()`.
 - **voice** (`voice.py`): an editor persona that writes the daily greeting and steers theme names.
