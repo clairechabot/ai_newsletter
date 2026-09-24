@@ -40,12 +40,29 @@ def test_greeting_is_rendered():
 
 def test_cover_mode_is_short_and_links_to_edition():
     themes = [{"name": "Theme A", "emoji": "X", "items": [_item("Opening")]},
-              {"name": "Theme B", "emoji": "Y", "items": [_item("Second")]}]
+              {"name": "Theme B", "emoji": "Y", "tab": "B short", "items": [_item("Second")]}]
     html = build_html_email("B", themes, edition_url="https://site/ed", cover=True)
-    assert "Opening" in html            # the hero item is included
-    assert "Second" not in html         # but not every item — it's a cover
-    assert "Theme B" in html            # table of contents lists all themes
-    assert "https://site/ed" in html    # links out to the full edition
+    assert "Opening" in html and "Second" in html   # every headline is listed...
+    assert "a summary" not in html                 # ...but no story bodies
+    assert "B short" in html                       # sections use their short label
+    assert 'href="https://site/ed"' in html and "Open the full edition" in html
+    assert 'href="https://site/ed/archive.html"' in html
+
+def test_cover_mode_with_labels():
+    from briefing.email import cover_preheader
+    first = _item("Lead"); first.extra.update(priority="first", why="Matters <a lot>.", image="https://cdn/a.jpg")
+    today = _item("Soon"); today.extra.update(priority="today", why="Useful.", image="https://cdn/b.jpg")
+    later = _item("Later on"); later.extra["priority"] = "later"
+    themes = [{"name": "T", "emoji": "X", "items": [later, first, today]}]
+    html = build_html_email("The Edge", themes, edition_url="https://site/", cover=True)
+    body = html.split("</style>")[1]
+    assert body.index("Read first") < body.index("Read today") < body.index("Also in today")
+    assert '<img class="hero" src="https://cdn/a.jpg"' in body and "Matters &lt;a lot&gt;." in body
+    assert '<td class="thumb"' in body and 'src="https://cdn/b.jpg"' in body
+    assert "Later on" in body.split("Also in today")[1]
+    assert "<b>1</b> to read first" in body and "<b>1</b> more" in body
+    assert cover_preheader(themes) == "1 to read first · 1 today · 1 more. Lead"
+    assert cover_preheader([{"name": "T", "emoji": "", "items": [later]}], "Hi") == "Hi"
 
 def test_recipients_parsing(monkeypatch):
     monkeypatch.delenv("EMAIL_RECIPIENTS", raising=False)
