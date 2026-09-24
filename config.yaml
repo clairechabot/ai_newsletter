@@ -16,6 +16,7 @@ filter:
     - "EU AI Act, AI regulation, policy and governance"
     - "AI's impact on work, organisations and society"
   max_items: 25
+  min_score: 50            # interests mode: keep stories Claude scores at least this (0-100)
   per_source_cap: 5
   # 48h rather than 24h: history.json stops repeats, and the wider window
   # catches weekly letters and anything a late or failed run missed.
@@ -27,7 +28,7 @@ sources:
   - { type: rss, name: "The Rundown AI",   url: "https://rss.beehiiv.com/feeds/2R3C6Bt5wj.xml" }
   - { type: rss, name: "AINews (smol.ai)", url: "https://news.smol.ai/rss.xml" }
   - { type: rss, name: "Latent Space",     url: "https://www.latent.space/feed" }
-  - { type: rss, name: "Import AI",        url: "https://importai.substack.com/feed", proxy: true }  # Substack 403s GitHub runners
+  - { type: rss, name: "Import AI",        url: "https://jack-clark.net/feed/" }  # same posts as importai.substack.com, which blocks GitHub
   - { type: rss, name: "AlphaSignal",      url: "https://alphasignal.ai/feed.xml" }
   - { type: rss, name: "Simon Willison",   url: "https://simonwillison.net/atom/entries/" }
   - { type: rss, name: "LangChain Blog",   url: "https://blog.langchain.com/rss.xml" }
@@ -35,7 +36,7 @@ sources:
   - { type: rss, name: "OpenAI News",      url: "https://openai.com/news/rss.xml" }
 
   # ── AI in finance, fintech & European startups ──
-  - { type: rss, name: "The FinTech Blueprint", url: "https://lex.substack.com/feed", proxy: true }  # Substack 403s GitHub runners
+  # - { type: rss, name: "The FinTech Blueprint", url: "https://lex.substack.com/feed" }  # Substack blocks GitHub's servers, relays too; no mirror feed. Try claude_fetch if wanted.
   - { type: rss, name: "Fintechnews Switzerland", url: "https://fintechnews.ch/feed/" }
   - { type: rss, name: "Sifted",           url: "https://sifted.eu/feed" }
 

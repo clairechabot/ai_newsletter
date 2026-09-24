@@ -76,7 +76,8 @@ def apply_filter(items, cfg) -> list:
             # Never lose the edition to a bad LLM call: fall back to newest-first.
             print("[filter] scoring failed; falling back to 'recent'", flush=True)
             return _recent(items, cfg)
-        kept = [i for i in items if scores.get(i.id, 0) >= SCORE_THRESHOLD]
+        threshold = getattr(cfg, "min_score", SCORE_THRESHOLD)
+        kept = [i for i in items if scores.get(i.id, 0) >= threshold]
         kept.sort(key=lambda i: scores.get(i.id, 0), reverse=True)
         return kept[:cfg.max_items]
     if mode == "claude_curate":

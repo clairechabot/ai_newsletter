@@ -19,6 +19,7 @@ class Config:
     per_source_cap: int
     recency_hours: int
     sources: list
+    min_score: int = 50                              # interests mode threshold (0-100)
     # Optional extensions — all default to "off" so a minimal config still works.
     voice: dict = field(default_factory=dict)       # editor persona (voice.py)
     priority: dict = field(default_factory=dict)    # reading-priority labels (priority.py)
@@ -55,6 +56,7 @@ def load_config(path: str) -> Config:
         filter_mode=mode,
         interests=f.get("interests", []),
         max_items=int(f.get("max_items", 25)),
+        min_score=int(f.get("min_score", 50)),
         per_source_cap=int(f.get("per_source_cap", 5)),
         recency_hours=int(f.get("recency_hours", 24)),
         sources=sources,
