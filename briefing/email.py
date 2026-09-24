@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from email.utils import formataddr
 from html import escape
 from briefing.theme import css
+from briefing.priority import LABELS, reading_list
 
 _CSS = css(
     "body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:$paper;"
@@ -30,6 +31,24 @@ _CSS = css(
     ".readmore{display:inline-block;margin:16px 0;padding:10px 18px;background:$orange;"
     "color:$black;border-radius:8px;text-decoration:none;font-weight:700}"
     ".toc{color:$ink;font-size:14px}.toc li{margin:2px 0}.toc li::marker{color:$cobalt}"
+    # Reading-priority labels (priority.py): orange = read first, cobalt = today.
+    ".badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.8px;"
+    "text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-right:6px;"
+    "vertical-align:1px}"
+    ".badge-first{background:$orange;color:$black}"
+    ".badge-today{background:$white;color:$cobalt;border:1px solid $cobalt}"
+    ".badge-later{background:$paper;color:$muted}"
+    ".card-first{border-left:4px solid $orange}"
+    ".why{color:$ink;font-size:14px;margin:6px 0}"
+    ".reading{background:$white;border:2px solid $black;border-radius:10px;"
+    "padding:14px 18px;margin:16px 0}"
+    ".reading-title{display:inline-block;margin:0 0 8px;font-size:13px;font-weight:700;"
+    "text-transform:uppercase;letter-spacing:1px;color:$black;"
+    "border-bottom:3px solid $orange}"
+    ".reading ol{margin:0;padding-left:20px}.reading li{margin:8px 0}"
+    ".reading li::marker{color:$orange;font-weight:700}"
+    ".reading a{color:$ink;font-weight:700;text-decoration:none}"
+    ".reading .why{margin:2px 0 0;color:$muted}"
 )
 
 def _safe_url(url) -> str:
@@ -38,6 +57,27 @@ def _safe_url(url) -> str:
     url = (url or "").strip()
     return url if url.startswith(("http://", "https://")) else ""
 
+def _badge(item) -> str:
+    tier = item.extra.get("priority")
+    return (f'<span class="badge badge-{tier}">{escape(LABELS[tier])}</span>'
+            if tier in LABELS else "")
+
+def _why(item) -> str:
+    why = item.extra.get("why")
+    return f'<p class="why"><b>Why it matters:</b> {escape(why)}</p>' if why else ""
+
+def _reading_list(themes) -> str:
+    """'Read first today' box at the top: the day's must-reads and why."""
+    items = reading_list(themes)
+    if not items:
+        return ""
+    rows = "".join(
+        f'<li><a href="{escape(_safe_url(i.url), quote=True)}">{escape(i.title)}</a>'
+        f' <span class="src">{escape(i.source)}</span>'
+        + (f'<p class="why">{escape(i.extra["why"])}</p>' if i.extra.get("why") else "")
+        + "</li>" for i in items)
+    return f'<div class="reading"><p class="reading-title">Read first today</p><ol>{rows}</ol></div>'
+
 def _card(item) -> str:
     href = escape(_safe_url(item.url), quote=True)
     if item.source_type == "youtube":
@@ -45,8 +85,9 @@ def _card(item) -> str:
         media = f'<a href="{href}"><img src="{thumb}" width="100%" style="border-radius:8px"></a>'
     else:
         media = ""
-    return (f'<div class="card"><div class="src">{escape(item.source)}</div>'
-            f'<a href="{href}">{escape(item.title)}</a>'
+    first = " card-first" if item.extra.get("priority") == "first" else ""
+    return (f'<div class="card{first}"><div class="src">{_badge(item)}{escape(item.source)}</div>'
+            f'<a href="{href}">{escape(item.title)}</a>{_why(item)}'
             f'<p>{escape(item.summary)}</p>{media}</div>')
 
 def _cover_body(themes, edition_url) -> str:
@@ -86,7 +127,8 @@ def build_html_email(title, themes, *, greeting="", edition_url="", cover=False,
     return (f'<!DOCTYPE html><html><head><meta charset="utf-8">'
             f'<style>{_CSS}</style></head><body>{_preheader(preheader)}<div class="wrapper">'
             f'<div class="header"><h1>{escape(title)}</h1><div class="date">{now}</div></div>'
-            f'{greet_html}{body}<div class="footer">Curated by Claude</div></div></body></html>')
+            f'{greet_html}{_reading_list(themes)}{body}'
+            f'<div class="footer">Curated by Claude</div></div></body></html>')
 
 def _recipients() -> list:
     """Recipients from EMAIL_RECIPIENT / EMAIL_RECIPIENTS / RECIPIENTS
@@ -97,9 +139,11 @@ def _recipients() -> list:
     return [a.strip() for a in raw.split(",") if a.strip()]
 
 def top_pick_subject(title, themes, limit=60) -> str:
-    """`Title | <lead headline>`, trimmed at a word boundary. Falls back to the
-    plain title when there are no items."""
-    first = next((t["items"][0] for t in themes if t.get("items")), None)
+    """`Title | <lead headline>`, trimmed at a word boundary. The lead is the
+    first "Read first" item when priority labels are on, else the first item.
+    Falls back to the plain title when there are no items."""
+    must = reading_list(themes)
+    first = must[0] if must else next((t["items"][0] for t in themes if t.get("items")), None)
     if not first or not first.title.strip():
         return title
     lead = " ".join(first.title.split())

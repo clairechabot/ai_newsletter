@@ -67,3 +67,15 @@ def test_palette_applied_to_web_and_archive(tmp_path):
         style = html.split("<style>")[1].split("</style>")[0]
         assert PALETTE["orange"] in style and PALETTE["cobalt"] in style
         assert "$" not in style
+
+def test_web_priority_badges_and_reading_list():
+    from datetime import datetime, timezone
+    from briefing.models import Item
+    from briefing.web import build_web_edition
+    it = Item.make(source="Sifted", source_type="rss", title="Hebbia raises", url="https://x/1",
+                   summary="s", published=datetime.now(timezone.utc))
+    it.extra.update(priority="first", why="Competitor <funding>.")
+    page = build_web_edition("The Edge", [{"name": "T", "emoji": "X", "items": [it]}])
+    body = page.split("</style>")[1]
+    assert "Read first today" in body and 'badge-first">Read first' in body
+    assert "Competitor &lt;funding&gt;." in body and "<funding>" not in body

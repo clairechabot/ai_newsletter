@@ -22,6 +22,7 @@ import re
 from datetime import datetime, timezone
 from html import escape
 from briefing.theme import css
+from briefing.priority import LABELS, reading_list
 
 _EDITION_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})-(.+)\.html$")
 
@@ -49,12 +50,50 @@ _CSS = css(
     ".card img{width:100%;border-radius:8px;margin-top:10px}"
     "footer{text-align:center;color:$muted;font-size:13px;margin-top:48px}"
     "footer a{color:$cobalt}"
+    # Reading-priority labels (priority.py): orange = read first, cobalt = today.
+    ".badge{display:inline-block;font-family:-apple-system,Segoe UI,Roboto,sans-serif;"
+    "font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;"
+    "padding:2px 8px;border-radius:4px;margin-right:8px;vertical-align:1px}"
+    ".badge-first{background:$orange;color:$black}"
+    ".badge-today{background:$white;color:$cobalt;border:1px solid $cobalt}"
+    ".badge-later{background:$rule;color:$muted}"
+    ".card.card-first{border-left:5px solid $orange}"
+    ".card .why{color:$ink;margin:0 0 8px}"
+    ".reading{border:2px solid $black;border-radius:12px;padding:18px 22px;margin:24px 0}"
+    ".reading-title{display:inline-block;margin:0 0 10px;font-size:14px;font-weight:700;"
+    "text-transform:uppercase;letter-spacing:2px;border-bottom:3px solid $orange}"
+    ".reading ol{margin:0;padding-left:22px}.reading li{margin:10px 0}"
+    ".reading li::marker{color:$orange;font-weight:700}"
+    ".reading a{color:$ink;font-weight:700;text-decoration:none}"
+    ".reading a:hover{color:$cobalt;text-decoration:underline}"
+    ".reading .src{color:$cobalt;font-size:12px;text-transform:uppercase;letter-spacing:1px}"
+    ".reading .why{margin:2px 0 0;color:$muted}"
 )
 
 
 def _safe_url(url) -> str:
     url = (url or "").strip()
     return url if url.startswith(("http://", "https://")) else ""
+
+
+def _badge(item) -> str:
+    tier = item.extra.get("priority")
+    return (f'<span class="badge badge-{tier}">{escape(LABELS[tier])}</span>'
+            if tier in LABELS else "")
+
+
+def _reading_list(themes) -> str:
+    """'Read first today' box at the top: the day's must-reads and why."""
+    items = reading_list(themes)
+    if not items:
+        return ""
+    rows = "".join(
+        f'<li><a href="{escape(_safe_url(i.url), quote=True)}">{escape(i.title)}</a>'
+        f' <span class="src">{escape(i.source)}</span>'
+        + (f'<p class="why">{escape(i.extra["why"])}</p>' if i.extra.get("why") else "")
+        + "</li>" for i in items)
+    return (f'<section class="reading"><p class="reading-title">Read first today</p>'
+            f'<ol>{rows}</ol></section>')
 
 
 def _card(item) -> str:
@@ -64,8 +103,11 @@ def _card(item) -> str:
         thumb = escape(_safe_url(item.extra.get("thumbnail", "")), quote=True)
         if thumb:
             media = f'<a href="{href}"><img src="{thumb}" alt=""></a>'
-    return (f'<div class="card"><div class="src">{escape(item.source)}</div>'
-            f'<h3><a href="{href}">{escape(item.title)}</a></h3>'
+    first = " card-first" if item.extra.get("priority") == "first" else ""
+    why = item.extra.get("why")
+    why_html = f'<p class="why"><b>Why it matters:</b> {escape(why)}</p>' if why else ""
+    return (f'<div class="card{first}"><div class="src">{_badge(item)}{escape(item.source)}</div>'
+            f'<h3><a href="{href}">{escape(item.title)}</a></h3>{why_html}'
             f'<p>{escape(item.summary)}</p>{media}</div>')
 
 
@@ -88,7 +130,8 @@ def build_web_edition(title, themes, *, greeting="", edition_label="",
         f'<title>{escape(title)}</title><style>{_CSS}</style></head><body>'
         f'<header class="masthead"><h1>{escape(title)}</h1>'
         f'<div class="date">{eyebrow}</div></header>'
-        f'<div class="wrap">{greet_html}{blocks}{footer}</div></body></html>'
+        f'<div class="wrap">{greet_html}{_reading_list(themes)}{blocks}{footer}</div>'
+        '</body></html>'
     )
 
 

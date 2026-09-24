@@ -125,3 +125,31 @@ def test_from_name_sets_sender_display_name(monkeypatch):
     assert "From: The Edge <me@x.com>" in first
     assert "From: me@x.com" in second
     assert server.sendmail.call_args_list[0].args[0] == "me@x.com"  # envelope stays bare
+
+def _labelled():
+    first = _item("Intapp launches <Celeste> for small funds")
+    first.extra.update(priority="first", why="Direct competitor moving into our <lane>.")
+    today = _item("New eval method"); today.extra["priority"] = "today"
+    later = _item("Consumer app news"); later.extra["priority"] = "later"
+    return [{"name": "T", "emoji": "X", "items": [first, today, later]}]
+
+def test_priority_badges_why_and_reading_list():
+    html = build_html_email("The Edge", _labelled())
+    body = html.split("</style>")[1]
+    assert "Read first today" in body
+    assert body.index("Read first today") < body.index('class="theme-title"')  # list on top
+    assert 'badge-first">Read first' in body and 'badge-today">Read today' in body
+    assert 'badge-later">Later' in body and "card-first" in body
+    assert "Direct competitor moving into our &lt;lane&gt;." in body  # why escaped
+    assert "<lane>" not in body and "<Celeste>" not in body
+
+def test_no_labels_no_reading_list():
+    html = build_html_email("B", [{"name": "T", "emoji": "X", "items": [_item("H")]}])
+    body = html.split("</style>")[1]
+    assert "Read first today" not in body and "badge" not in body
+
+def test_top_pick_subject_prefers_read_first():
+    from briefing.email import top_pick_subject
+    themes = _labelled()
+    themes[0]["items"] = themes[0]["items"][::-1]  # a "later" item leads the theme
+    assert "Intapp" in top_pick_subject("The Edge", themes)
