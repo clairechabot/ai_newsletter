@@ -61,6 +61,7 @@ sources:
   # Tech Policy Press (feed times out). claude_fetch can cover one if you need it.
 
 email:
+  mode: cover              # short email (Read first cards, Read today rows, headlines) + link to the web edition
   from_name: "The Edge"    # sender name shown in Gmail
 
 # Reading priority: labels every item "Read first", "Read today" or "Later"

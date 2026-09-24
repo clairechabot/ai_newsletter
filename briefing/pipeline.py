@@ -8,7 +8,7 @@ from briefing.priority import prioritize, order_themes, reading_list
 from briefing.images import add_images
 from briefing.voice import compose_greeting, RECENT_KEEP
 from briefing.editions import pick_edition
-from briefing.email import build_html_email, send_email, top_pick_subject, check_login
+from briefing.email import build_html_email, send_email, top_pick_subject, check_login, cover_preheader
 from briefing.web import build_web_edition, save_edition, build_archive_index
 
 def run(cfg, history_path="history.json", now=None) -> None:
@@ -47,10 +47,10 @@ def run(cfg, history_path="history.json", now=None) -> None:
     must = reading_list(themes)
     lead = must[0].title if must else next(
         (t["items"][0].title for t in themes if t.get("items")), "")
+    cover = cfg.email_mode == "cover"
     html = build_html_email(title, themes, greeting=greeting,
-                            edition_url=cfg.web.get("edition_url", ""),
-                            cover=(cfg.email_mode == "cover"),
-                            preheader=greeting or lead)
+                            edition_url=cfg.web.get("edition_url", ""), cover=cover,
+                            preheader=cover_preheader(themes, greeting) if cover else (greeting or lead))
     subject = top_pick_subject(title, themes) if cfg.email_subject == "top_pick" else None
     send_email(title, html, subject=subject, from_name=cfg.email_from_name)
 
