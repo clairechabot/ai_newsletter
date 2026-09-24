@@ -22,6 +22,7 @@ class Config:
     # Optional extensions — all default to "off" so a minimal config still works.
     voice: dict = field(default_factory=dict)       # editor persona (voice.py)
     priority: dict = field(default_factory=dict)    # reading-priority labels (priority.py)
+    images: dict = field(default_factory=dict)      # preview images (images.py)
     web: dict = field(default_factory=dict)          # web edition + archive (web.py)
     editions: list = field(default_factory=list)     # AM/PM schedule (editions.py)
     email_mode: str = "full"                         # "full" | "cover"
@@ -59,6 +60,7 @@ def load_config(path: str) -> Config:
         sources=sources,
         voice=raw.get("voice", {}) or {},
         priority=raw.get("priority", {}) or {},
+        images=raw.get("images", {}) or {},
         web=raw.get("web", {}) or {},
         editions=raw.get("editions", []) or [],
         email_mode=email_mode,

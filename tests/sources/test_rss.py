@@ -36,3 +36,34 @@ def test_per_feed_timeout_passed_through():
          patch("briefing.sources.rss.feedparser.parse", return_value=_fake_parsed()):
         fetch_rss(cfg)
     assert f.call_args.kwargs["timeout"] == 60
+
+def test_feed_images_and_plain_text_summaries():
+    now = datetime.now(timezone.utc).timetuple()
+    parsed = type("P", (), {"entries": [
+        {"title": "Using the  <details> element", "link": "http://x/1", "published_parsed": now,
+         "summary": "<p>First &amp; <b>best</b></p>\n<p>line</p>",
+         "media_content": [{"url": "https://cdn/v.mp4", "type": "video/mp4"},
+                           {"url": "https://cdn/pic.jpg", "medium": "image"}]},
+        {"title": "B", "link": "http://x/2", "published_parsed": now, "summary": "x",
+         "enclosures": [{"href": "https://cdn/enc.png", "type": "image/png"}]},
+        {"title": "C", "link": "http://x/3", "published_parsed": now, "summary": "x",
+         "media_thumbnail": [{"url": "https://cdn/thumb.jpg"}]},
+        {"title": "D", "link": "http://x/4", "published_parsed": now, "summary": "x" * 900,
+         "enclosures": [{"href": "https://cdn/ep.mp3", "type": "audio/mpeg"}]},
+    ]})()
+    cfg = {"type": "rss", "name": "F", "url": "http://x/rss"}
+    with patch("briefing.sources.rss.fetch", return_value=MagicMock(content=b"")), \
+         patch("briefing.sources.rss.feedparser.parse", return_value=parsed):
+        a, b, c, d = fetch_rss(cfg, recency_hours=24)
+    assert a.summary == "First & best line"            # HTML stripped, entities decoded
+    assert a.title == "Using the <details> element"     # titles are text: kept, whitespace tidied
+    assert a.extra["image"] == "https://cdn/pic.jpg"    # video media skipped
+    assert b.extra["image"] == "https://cdn/enc.png"
+    assert c.extra["image"] == "https://cdn/thumb.jpg"
+    assert "image" not in d.extra and d.summary.endswith("…") and len(d.summary) <= 501
+
+def test_wordpress_footer_removed():
+    from briefing.sources.rss import _plain
+    html = "<p>UBS may need US$16B more.</p><p>The post UBS Capital Rule appeared first on Fintech Schweiz - FintechNewsCH.</p>"
+    assert _plain(html) == "UBS may need US$16B more."
+    assert _plain("The post office reopened today.") == "The post office reopened today."

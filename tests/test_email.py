@@ -153,3 +153,13 @@ def test_top_pick_subject_prefers_read_first():
     themes = _labelled()
     themes[0]["items"] = themes[0]["items"][::-1]  # a "later" item leads the theme
     assert "Intapp" in top_pick_subject("The Edge", themes)
+
+def test_email_images_hero_for_first_thumb_for_rest_escaped():
+    first = _item("Lead"); first.extra.update(priority="first", image='https://cdn/a.jpg?x=1&y="2"')
+    rest = _item("Other"); rest.extra.update(priority="later", image="https://cdn/b.jpg")
+    bad = _item("Bad"); bad.extra["image"] = "javascript:alert(1)"
+    html = build_html_email("B", [{"name": "T", "emoji": "X", "items": [first, rest, bad]}])
+    body = html.split("</style>")[1]
+    assert 'class="hero" src="https://cdn/a.jpg?x=1&amp;y=&quot;2&quot;"' in body
+    assert '<td class="thumb" width="100" valign="top">' in body and 'src="https://cdn/b.jpg"' in body
+    assert "javascript:" not in body

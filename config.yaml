@@ -91,6 +91,9 @@ priority:
     European startup funding programmes.
     Not relevant: LP and quarterly reporting tools, consumer AI, crypto trading.
 
+# Preview images: each story's og:image (what link previews show), hotlinked.
+images: { enabled: true }
+
 web: { enabled: true, output_dir: "docs", edition_url: "https://clairechabot.github.io/ai_newsletter/" }
 
 # Optional extensions (uncomment to enable — see config.example.yaml for docs):

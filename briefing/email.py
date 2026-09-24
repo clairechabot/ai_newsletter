@@ -39,6 +39,9 @@ _CSS = css(
     ".badge-today{background:$white;color:$cobalt;border:1px solid $cobalt}"
     ".badge-later{background:$paper;color:$muted}"
     ".card-first{border-left:4px solid $orange}"
+    ".card img.hero{display:block;width:100%;height:auto;border-radius:6px;margin:0 0 10px}"
+    ".card td.thumb{padding-right:12px}"
+    ".card td.thumb img{display:block;width:88px;height:auto;border-radius:4px}"
     ".why{color:$ink;font-size:14px;margin:6px 0}"
     ".reading{background:$white;border:2px solid $black;border-radius:10px;"
     "padding:14px 18px;margin:16px 0}"
@@ -78,17 +81,28 @@ def _reading_list(themes) -> str:
         + "</li>" for i in items)
     return f'<div class="reading"><p class="reading-title">Read first today</p><ol>{rows}</ol></div>'
 
+def _image_url(item) -> str:
+    return _safe_url(item.extra.get("image") or item.extra.get("thumbnail", ""))
+
 def _card(item) -> str:
     href = escape(_safe_url(item.url), quote=True)
-    if item.source_type == "youtube":
-        thumb = escape(_safe_url(item.extra.get("thumbnail", "")), quote=True)
-        media = f'<a href="{href}"><img src="{thumb}" width="100%" style="border-radius:8px"></a>'
-    else:
-        media = ""
+    img = escape(_image_url(item), quote=True)
     first = " card-first" if item.extra.get("priority") == "first" else ""
-    return (f'<div class="card{first}"><div class="src">{_badge(item)}{escape(item.source)}</div>'
+    text = (f'<div class="src">{_badge(item)}{escape(item.source)}</div>'
             f'<a href="{href}">{escape(item.title)}</a>{_why(item)}'
-            f'<p>{escape(item.summary)}</p>{media}</div>')
+            f'<p>{escape(item.summary)}</p>')
+    if img and (first or item.source_type == "youtube"):
+        # The big picture goes to what to read first (and videos) only.
+        return (f'<div class="card{first}"><a href="{href}"><img class="hero" src="{img}" '
+                f'alt="" width="100%"></a>{text}</div>')
+    if img:
+        # A small thumbnail beside the text. A table, because Gmail ignores
+        # floats, flex and grid.
+        return (f'<div class="card{first}"><table role="presentation" width="100%" '
+                f'cellpadding="0" cellspacing="0"><tr><td class="thumb" width="100" valign="top">'
+                f'<a href="{href}"><img src="{img}" alt="" width="88"></a></td>'
+                f'<td valign="top">{text}</td></tr></table></div>')
+    return f'<div class="card{first}">{text}</div>'
 
 def _cover_body(themes, edition_url) -> str:
     """Short 'cover' email: today's opening item + a table of contents that

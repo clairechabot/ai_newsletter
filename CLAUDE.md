@@ -13,6 +13,9 @@ render (email + optional web edition).
   `today` / `later` (in `item.extra["priority"]`, plus `extra["why"]`) against a company profile
   in `priority.context`; themes are re-sorted by it and both renderers show badges and a
   "Read first today" list. Fails soft to unlabeled items.
+- **images** (`images.py`): after filtering, sets `item.extra["image"]` from the feed's own media
+  (RSS `media:content` / enclosures, YouTube thumbnails) or the article's `og:image`. Fails soft per
+  item. Renderers show a large image on "Read first" / video cards and a thumbnail on the rest.
 - **palette** (`theme.py`): every colour the email and web edition use lives in `PALETTE`; CSS in
   `email.py` / `web.py` references `$name` placeholders filled by `theme.css()`.
 - **voice** (`voice.py`): an editor persona that writes the daily greeting and steers theme names.

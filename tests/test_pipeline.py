@@ -77,3 +77,16 @@ def test_run_prioritizes_before_theming_and_leads_with_read_first(tmp_path):
     assert pr.call_args[0][1] == cfg.priority
     assert "Read first today" in sent["html"]
     assert sent["html"].index("badge-first") < sent["html"].index("http://x/a")  # b sorted first
+
+def test_run_adds_images_to_selected_items(tmp_path):
+    cfg = Config(title="B", filter_mode="recent", interests=[], max_items=5,
+                 per_source_cap=2, recency_hours=24,
+                 sources=[{"type": "rss", "name": "S", "url": "http://x"}], images={"enabled": True})
+    with patch("briefing.pipeline.fetch_all", return_value=[_item("a")]), \
+         patch("briefing.pipeline.load_history", return_value={"seen_ids": []}), \
+         patch("briefing.pipeline.add_images") as imgs, \
+         patch("briefing.pipeline.group_into_themes",
+               side_effect=lambda items, voice=None: [{"name": "T", "emoji": "X", "items": items}]), \
+         patch("briefing.pipeline.send_email"), patch("briefing.pipeline.save_history"):
+        run(cfg, history_path=str(tmp_path / "h.json"))
+    assert [i.id for i in imgs.call_args[0][0]] == ["a"] and imgs.call_args[0][1] == {"enabled": True}
