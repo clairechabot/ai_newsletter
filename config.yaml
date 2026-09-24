@@ -5,7 +5,10 @@ briefing:
   title: "The Edge"
 
 filter:
-  mode: interests          # interests | recent | per_source_cap | claude_curate
+  # claude_curate: the day's biggest AI stories first, plus anything touching the
+  # interests below. (interests mode keeps ONLY interest matches; too narrow here.)
+  # Khare relevance is then layered on top by the priority labels further down.
+  mode: claude_curate      # interests | recent | per_source_cap | claude_curate
   interests:
     - "AI for private capital: deal screening, due diligence, portfolio and loan monitoring tools"
     - "verifiable, governed AI: citations, claim verification, audit trails, human approval"
