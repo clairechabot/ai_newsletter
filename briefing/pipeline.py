@@ -8,7 +8,7 @@ from briefing.priority import prioritize, order_themes, reading_list
 from briefing.images import add_images
 from briefing.voice import compose_greeting, RECENT_KEEP
 from briefing.editions import pick_edition
-from briefing.email import build_html_email, send_email, top_pick_subject
+from briefing.email import build_html_email, send_email, top_pick_subject, check_login
 from briefing.web import build_web_edition, save_edition, build_archive_index
 
 def run(cfg, history_path="history.json", now=None) -> None:
@@ -16,6 +16,7 @@ def run(cfg, history_path="history.json", now=None) -> None:
     slot = pick_edition(cfg.editions, now.hour)
     title = f"{cfg.title} — {slot['label']}" if slot.get("label") else cfg.title
 
+    check_login()  # fail fast on a bad mail password, before fetching or paying for Claude
     raw = fetch_all(cfg)
     print(f"[pipeline] fetched {len(raw)} items", flush=True)
     hist = load_history(history_path)

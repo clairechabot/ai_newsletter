@@ -175,3 +175,30 @@ def test_empty_smtp_env_falls_back_to_gmail_defaults(monkeypatch):
         smtp.return_value.__enter__.return_value = MagicMock()
         send_email("B", "<p/>")
     assert smtp.call_args.args == ("smtp.gmail.com", 587)
+
+
+def test_check_login_skips_without_settings_and_logs_in_with_them(monkeypatch):
+    from unittest.mock import patch, MagicMock
+    from briefing.email import check_login
+    monkeypatch.delenv("EMAIL_SENDER", raising=False); monkeypatch.setenv("EMAIL_PASSWORD", "")
+    assert check_login() is False
+    monkeypatch.setenv("EMAIL_SENDER", "me@x.com"); monkeypatch.setenv("EMAIL_PASSWORD", "app-pw")
+    server = MagicMock()
+    with patch("briefing.email.smtplib.SMTP") as smtp:
+        smtp.return_value.__enter__.return_value = server
+        assert check_login() is True
+    server.login.assert_called_once_with("me@x.com", "app-pw")
+
+def test_gmail_app_password_error_gets_a_hint(monkeypatch):
+    import smtplib
+    import pytest
+    from unittest.mock import patch, MagicMock
+    from briefing.email import check_login
+    monkeypatch.setenv("EMAIL_SENDER", "me@gmail.com"); monkeypatch.setenv("EMAIL_PASSWORD", "account-pw")
+    server = MagicMock()
+    server.login.side_effect = smtplib.SMTPAuthenticationError(534, b"5.7.9 Application-specific password required")
+    with patch("briefing.email.smtplib.SMTP") as smtp:
+        smtp.return_value.__enter__.return_value = server
+        with pytest.raises(RuntimeError) as err:
+            check_login()
+    assert "App Password" in str(err.value) and "apppasswords" in str(err.value)
