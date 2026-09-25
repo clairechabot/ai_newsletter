@@ -232,7 +232,8 @@ def _quick_patches(tmp_path, sent, hist=None, saved=None):
 def test_preview_sends_but_saves_nothing(tmp_path):
     cfg = _sched_cfg(tmp_path)
     sent = {}
-    stack, save = _quick_patches(tmp_path, sent)
+    # every story was already sent: a preview still builds from them
+    stack, save = _quick_patches(tmp_path, sent, hist={"seen_ids": ["a"]})
     with stack:
         run(cfg, history_path=str(tmp_path / "h.json"), now=datetime(2026, 9, 24, 8, 30),
             edition="daily", preview=True)
