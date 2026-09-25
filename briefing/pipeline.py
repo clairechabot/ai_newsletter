@@ -1,10 +1,11 @@
 from __future__ import annotations
 from datetime import datetime
 from briefing.sources import fetch_all
-from briefing.history import load_history, save_history, drop_seen, mark_seen
+from briefing.history import (load_history, save_history, drop_seen, mark_seen,
+                              recent_titles, remember_order)
 from briefing.filter import apply_filter
 from briefing.enrich import group_into_themes
-from briefing.priority import prioritize, order_themes, reading_list
+from briefing.priority import prioritize, order_themes, reading_list, triage, display_title
 from briefing.images import add_images
 from briefing.summary import summarize
 from briefing.voice import compose_greeting, RECENT_KEEP
@@ -32,7 +33,9 @@ def run(cfg, history_path="history.json", now=None) -> None:
     add_images(selected, cfg.images)    # optional: preview image + read time per item
     # optional: labels read first / today / later and folds duplicate coverage
     # of one event into its lead story (the others ride along in extra["also"])
-    selected = prioritize(selected, cfg.priority, topics=cfg.topics())
+    today = now.strftime("%Y-%m-%d")
+    selected = prioritize(selected, cfg.priority, topics=cfg.topics(),
+                          recent=recent_titles(hist, today))
     themes = order_themes(group_into_themes(selected, cfg.voice))
     summary = summarize(themes, cfg.summary, profile=cfg.priority)  # optional: "The day in 30 seconds"
     greeting = compose_greeting(cfg.voice, themes, recent=hist.get("recent_greetings"))
@@ -66,6 +69,7 @@ def run(cfg, history_path="history.json", now=None) -> None:
     send_email(title, html, subject=subject, from_name=cfg.email_from_name)
 
     mark_seen(hist, fresh)
+    remember_order(hist, [display_title(i) for i in triage(themes)[0]], today)
     if greeting:
         hist["recent_greetings"] = (hist.get("recent_greetings", []) + [greeting])[-RECENT_KEEP:]
     save_history(history_path, hist)

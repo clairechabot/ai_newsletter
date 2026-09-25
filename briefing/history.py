@@ -56,3 +56,24 @@ def mark_seen(hist, items) -> dict:
             marks.add(tm)
     hist["seen_ids"] = sorted(marks)
     return hist
+
+RECENT_ORDER_DAYS = 2  # how many past editions' reading orders count as "already covered"
+
+def recent_titles(hist, today) -> list:
+    """Headlines from the reading order of the last RECENT_ORDER_DAYS dates
+    before `today` (ISO date), newest first: what readers were already told
+    to read, so a follow-up can be recognised as one."""
+    rows = [r for r in hist.get("recent_order") or []
+            if isinstance(r, dict) and r.get("title") and str(r.get("date", "")) < today]
+    dates = sorted({r["date"] for r in rows}, reverse=True)[:RECENT_ORDER_DAYS]
+    return [r["title"] for d in dates for r in rows if r["date"] == d]
+
+def remember_order(hist, titles, today) -> dict:
+    """Record today's reading-order headlines, replacing an earlier run of the
+    same date, and keep only the last few dates."""
+    rows = [r for r in hist.get("recent_order") or []
+            if isinstance(r, dict) and r.get("date") != today]
+    rows += [{"date": today, "title": t} for t in titles if t]
+    dates = sorted({r["date"] for r in rows}, reverse=True)[:RECENT_ORDER_DAYS + 1]
+    hist["recent_order"] = [r for r in rows if r["date"] in dates]
+    return hist

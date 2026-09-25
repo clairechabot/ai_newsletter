@@ -315,3 +315,11 @@ def test_unsubscribe_sender_uses_the_sending_account(monkeypatch):
     monkeypatch.delenv("EMAIL_SENDER")
     assert unsubscribe_link("sender") == "" and unsubscribe_link("javascript:x") == ""
     assert unsubscribe_link("https://x/unsub") == "https://x/unsub"
+
+
+def test_followups_are_tagged_in_the_skim():
+    themes = _triage_themes()
+    themes[0]["items"][2].extra["followup"] = True   # "Skim 0"
+    html = build_html_email("E", themes, edition_url="https://s/", cover=True)
+    skim = html.split("Skim if you have time")[1]
+    assert "Follow-up &middot; Src" in skim and skim.count("Follow-up") == 1

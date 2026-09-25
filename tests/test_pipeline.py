@@ -61,7 +61,7 @@ def test_run_prioritizes_before_theming_and_leads_with_read_first(tmp_path):
                  per_source_cap=2, recency_hours=24,
                  sources=[{"type": "rss", "name": "S", "url": "http://x"}],
                  priority={"enabled": True, "context": "x"}, email_subject="top_pick")
-    def label(items, pcfg, topics=()):
+    def label(items, pcfg, topics=(), recent=()):
         items[1].extra.update(priority="first", why="w")
         return items
     sent = {}
@@ -99,7 +99,7 @@ def test_run_folds_clusters_summarizes_and_sends_cover(tmp_path):
                  summary={"enabled": True}, email_mode="cover",
                  web={"enabled": True, "output_dir": str(tmp_path / "docs"),
                       "edition_url": "https://site/"})
-    def label(items, pcfg, topics=()):
+    def label(items, pcfg, topics=(), recent=()):
         a, b = sorted(items, key=lambda i: i.id)
         a.extra.update(priority="first", why="w", also=[b])
         return [a]  # b folded into a
@@ -124,3 +124,26 @@ def test_run_folds_clusters_summarizes_and_sends_cover(tmp_path):
     assert "For Khare:" in sent["html"] and "Big day: Something happened." in sent["html"]
     assert "Big day." in (tmp_path / "docs" / "index.html").read_text()
     assert set(save.call_args[0][1]["seen_ids"]) >= {"a", "b"}  # the folded duplicate is seen too
+
+
+def test_run_feeds_recent_reading_orders_to_priority_and_remembers_today(tmp_path):
+    cfg = Config(title="B", filter_mode="recent", interests=[], max_items=5,
+                 per_source_cap=2, recency_hours=24,
+                 sources=[{"type": "rss", "name": "S", "url": "http://x"}],
+                 priority={"enabled": True, "context": "x"})
+    hist = {"seen_ids": [], "recent_order": [{"date": "2026-09-23", "title": "Yesterday's lead"}]}
+    def label(items, pcfg, topics=(), recent=()):
+        seen["recent"] = list(recent)
+        items[0].extra.update(priority="first", why="w")
+        return items
+    seen = {}
+    with patch("briefing.pipeline.fetch_all", return_value=[_item("a")]), \
+         patch("briefing.pipeline.load_history", return_value=hist), \
+         patch("briefing.pipeline.prioritize", side_effect=label), \
+         patch("briefing.pipeline.group_into_themes",
+               side_effect=lambda items, voice=None: [{"name": "T", "emoji": "X", "items": list(items)}]), \
+         patch("briefing.pipeline.send_email"), patch("briefing.pipeline.save_history") as save:
+        run(cfg, history_path=str(tmp_path / "h.json"), now=datetime(2026, 9, 24, 6, 13))
+    assert seen["recent"] == ["Yesterday's lead"]
+    saved = save.call_args[0][1]["recent_order"]
+    assert {"date": "2026-09-24", "title": "T"} in saved

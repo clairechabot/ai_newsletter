@@ -257,7 +257,7 @@ def _cover_skim(skim, edition_url) -> str:
         out += "".join(
             f'<tr><td style="padding:6px 0;{_F}font-size:14px;line-height:20px;{_LH}">'
             f'<a href="{_href(i.url)}" style="color:{_P["ink"]};text-decoration:none;">{escape(i.title)}</a> '
-            f'<span style="color:{_P["muted"]};font-size:12px;">{escape(i.source)}</span></td></tr>'
+            f'<span style="color:{_P["muted"]};font-size:12px;">{_followup(i)}{escape(i.source)}</span></td></tr>'
             for i in shown)
         if len(items) > len(shown):
             out += (f'<tr><td style="padding:2px 0 4px 0;{_F}font-size:13px;">'
@@ -265,6 +265,11 @@ def _cover_skim(skim, edition_url) -> str:
                     f'text-decoration:underline;">{len(items) - len(shown)} more in {escape(name)} '
                     f'&rarr;</a></td></tr>')
     return out
+
+def _followup(item) -> str:
+    """"Follow-up · " before the source of a story that only updates one from
+    an earlier reading order (priority.py)."""
+    return "Follow-up &middot; " if item.extra.get("followup") else ""
 
 def _cover_footer(title, n_sources, org, link, unsubscribe, address) -> str:
     line = f"{escape(title)} is curated by Claude from {_plural(n_sources, 'source', 'sources')}"

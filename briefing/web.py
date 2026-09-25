@@ -460,7 +460,8 @@ def _skim_section(skim, expanded) -> str:
                 "No summary in the feed; open the article for the full story."
             rows += (f'<div class="srow"><button class="stog" type="button" aria-expanded="true" '
                      f'aria-controls="{gid}"><span><b>{escape(i.title)}</b>'
-                     f'<span class="src">{escape(i.source)}</span></span>'
+                     f'<span class="src">{"Follow-up · " if i.extra.get("followup") else ""}'
+                     f'{escape(i.source)}</span></span>'
                      f'<span class="sign" aria-hidden="true">−</span></button>'
                      f'<div class="sgist" id="{gid}"><span>{summary}</span>'
                      f'<a href="{escape(_safe_url(i.url), quote=True)}" target="_blank" rel="noopener">'
