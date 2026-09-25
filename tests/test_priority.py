@@ -154,3 +154,21 @@ def test_topics_are_assigned_and_validated():
         prioritize(plain, CFG)
     assert "topic" not in plain[0].extra
     assert '"t"' not in c.return_value.messages.create.call_args.kwargs["messages"][0]["content"]
+
+def test_followups_of_recent_reading_orders_are_demoted():
+    items = [_item(0), _item(1)]
+    client = _client({"items": [{"i": 0, "p": "first", "why": "x", "followup": True},
+                                {"i": 1, "p": "today", "why": "y"}]})
+    with patch("briefing.priority._client", return_value=client):
+        prioritize(items, CFG, recent=["Opus 5.5 ships"])
+    assert items[0].extra["priority"] == "later" and items[0].extra["followup"] is True
+    assert items[1].extra["priority"] == "today" and "followup" not in items[1].extra
+    prompt = client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "- Opus 5.5 ships" in prompt and '"followup": true' in prompt
+    # without recent headlines the flag is neither asked for nor honoured
+    items = [_item(2)]
+    client = _client({"items": [{"i": 0, "p": "first", "followup": True}]})
+    with patch("briefing.priority._client", return_value=client):
+        prioritize(items, CFG)
+    assert items[0].extra["priority"] == "first" and "followup" not in items[0].extra
+    assert "followup" not in client.messages.create.call_args.kwargs["messages"][0]["content"]

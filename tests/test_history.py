@@ -53,3 +53,16 @@ def test_drop_seen_honours_legacy_ids_and_title_marks():
     hist = mark_seen({"seen_ids": []}, [old])
     repost = _titled("http://elsewhere/2", "A long enough headline here")
     assert drop_seen([repost], hist) == []
+
+def test_recent_order_keeps_two_past_days_and_replaces_reruns():
+    from briefing.history import recent_titles, remember_order
+    hist = {}
+    remember_order(hist, ["Mon A", "Mon B"], "2026-09-21")
+    remember_order(hist, ["Tue A"], "2026-09-22")
+    remember_order(hist, ["Wed old"], "2026-09-23")
+    remember_order(hist, ["Wed A", ""], "2026-09-23")      # a rerun replaces the day
+    assert recent_titles(hist, "2026-09-24") == ["Wed A", "Tue A"]
+    assert recent_titles(hist, "2026-09-23") == ["Tue A", "Mon A", "Mon B"]
+    remember_order(hist, ["Thu A"], "2026-09-24")
+    assert {r["date"] for r in hist["recent_order"]} == {"2026-09-22", "2026-09-23", "2026-09-24"}
+    assert recent_titles({}, "2026-09-24") == [] and recent_titles({"recent_order": ["junk"]}, "x") == []

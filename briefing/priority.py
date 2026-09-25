@@ -54,7 +54,17 @@ def rank(item) -> int:
     return _RANK.get(item.extra.get("priority"), len(TIERS))
 
 
-def _prompt(items, cfg, topics=()) -> str:
+def _recent_block(recent, org) -> str:
+    if not recent:
+        return ""
+    lines = "\n".join(f"- {t}" for t in recent)
+    return (f"Already in {org}'s reading order in the last two days:\n{lines}\n"
+            "If an item only follows up one of these without a significant new fact (a new "
+            'number, decision, launch or reversal), mark it "later" and add "followup": true. '
+            "A real new development on the same story is ranked normally.\n")
+
+
+def _prompt(items, cfg, topics=(), recent=()) -> str:
     org = cfg.get("org") or "the reader's company"
     max_first = int(cfg.get("max_first", 3))
     catalogue = "\n".join(f"[{n}] {i.source} | {i.title} | {i.summary[:300]}"
@@ -77,12 +87,14 @@ def _prompt(items, cfg, topics=()) -> str:
         'as the lead and give every other one "same_as": <lead index>. Give the lead '
         '"cluster_title": one plain headline for the whole event, at most 14 words, and '
         'write its "why" for the event as a whole.\n'
+        + _recent_block(recent, org)
         + (f'Give every item "t": the one topic from this list that fits it best, exactly as '
            f'written, or "" if none fits: {json.dumps(list(topics), ensure_ascii=False)}.\n'
            if topics else "")
         + "List every item, most important first. Return ONLY JSON:\n"
         '{"items": [{"i": <index>, "p": "first|today|later", "why": "...", '
         + ('"t": "<topic>", ' if topics else "")
+        + ('"followup": true, ' if recent else "")
         + '"same_as": <index, only for duplicates>, "cluster_title": "..., only on a lead"}]}\n\n'
         + catalogue
     )
@@ -100,16 +112,19 @@ def _root(idx, same_as) -> int:
     return cur
 
 
-def prioritize(items, cfg, topics=()) -> list:
+def prioritize(items, cfg, topics=(), recent=()) -> list:
     """Label `items` in place (see module doc) and return the list without
     the duplicates folded into a cluster lead. With `topics` (the archive's
     fixed categories) each item also gets `extra["topic"]`, one of them or "".
+    `recent` is the last days' reading-order headlines (history.recent_titles):
+    an item that only follows one up is demoted to "later" and gets
+    `extra["followup"] = True`.
     No-op when disabled; returns the items unlabeled and unclustered if
     Claude's answer can't be used."""
     if not is_enabled(cfg) or not items:
         return items
     topics = list(topics or ())
-    data = claude_json(_prompt(items, cfg, topics), max_tokens=min(5000, 300 + 80 * len(items)),
+    data = claude_json(_prompt(items, cfg, topics, list(recent or ())), max_tokens=min(5000, 300 + 80 * len(items)),
                        context="priority", client_factory=lambda: _client())
     if data is None or not isinstance(data.get("items"), list):
         print("[priority] ranking failed; edition goes out unlabeled", flush=True)
@@ -149,6 +164,11 @@ def prioritize(items, cfg, topics=()) -> list:
     for n, idx in enumerate(leads):
         group = [idx] + groups.get(idx, [])
         tier = min((rows[g]["p"] for g in group), key=_RANK.get)  # the group's best tier
+        if recent and rows[idx].get("followup") is True:
+            tier = "later"  # nothing new since it ran in an earlier reading order
+            item_followup = True
+        else:
+            item_followup = False
         if tier == "first":
             # Claude lists most important first, so the cap keeps the top ones.
             n_first += 1
@@ -156,6 +176,8 @@ def prioritize(items, cfg, topics=()) -> list:
                 tier = "today"
         item = items[idx]
         item.extra["priority"] = tier
+        if item_followup:
+            item.extra["followup"] = True
         item.extra["rank"] = n
         why = next((str(rows[g].get("why") or "").strip() for g in group
                     if str(rows[g].get("why") or "").strip()), "")

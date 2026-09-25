@@ -18,7 +18,9 @@ render (email + optional web edition).
   (`same_as`): the lead keeps the others in `extra["also"]`, gets `extra["cluster_title"]` and the
   group's best tier, and `prioritize` returns the list without them. `extra["rank"]` is Claude's
   order; with no labels at all `triage` uses each of the first 3 sections' lead story. With topics (`Config.topics()`: `archive.topics`, else labels from `filter.interests`) it
-  also sets `extra["topic"]` (validated, "" if none). `priority.triage(themes)` gives the renderers' (reading order, skim) split. Fails soft to
+  also sets `extra["topic"]` (validated, "" if none). The last 2 days' reading-order headlines
+  (`history.recent_order`, via `recent_titles` / `remember_order`) go into the prompt; a story that
+  only follows one up is demoted to `later` with `extra["followup"]` ("Follow-up ·" in skim). `priority.triage(themes)` gives the renderers' (reading order, skim) split. Fails soft to
   unlabeled, unclustered items.
 - **summary** (`summary.py`): "The day in 30 seconds": one Claude call after theming, written for
   the priority profile (`org` + `context`) when priority is on, 3
