@@ -6,6 +6,7 @@ from briefing.filter import apply_filter
 from briefing.enrich import group_into_themes
 from briefing.priority import prioritize, order_themes, reading_list
 from briefing.images import add_images
+from briefing.summary import summarize
 from briefing.voice import compose_greeting, RECENT_KEEP
 from briefing.editions import pick_edition
 from briefing.email import build_html_email, send_email, top_pick_subject, check_login, cover_preheader
@@ -28,10 +29,14 @@ def run(cfg, history_path="history.json", now=None) -> None:
     selected = apply_filter(fresh, cfg)
     print(f"[pipeline] {len(selected)} after filter ({cfg.filter_mode})", flush=True)
 
-    add_images(selected, cfg.images)    # optional: preview image per item
-    prioritize(selected, cfg.priority)  # optional: labels read first / today / later
+    add_images(selected, cfg.images)    # optional: preview image + read time per item
+    # optional: labels read first / today / later and folds duplicate coverage
+    # of one event into its lead story (the others ride along in extra["also"])
+    selected = prioritize(selected, cfg.priority)
     themes = order_themes(group_into_themes(selected, cfg.voice))
+    summary = summarize(themes, cfg.summary)  # optional: "The day in 30 seconds"
     greeting = compose_greeting(cfg.voice, themes, recent=hist.get("recent_greetings"))
+    org = cfg.priority.get("org", "") if cfg.priority.get("enabled") else ""
 
     # Web edition (optional): write the browsable page + permanent archive copy.
     if cfg.web.get("enabled"):
@@ -39,7 +44,10 @@ def run(cfg, history_path="history.json", now=None) -> None:
         page = build_web_edition(title, themes, greeting=greeting,
                                  edition_label=slot.get("label", ""),
                                  date_str=now.strftime("%A %d %B %Y").replace(" 0", " "),
-                                 edition_date=now.strftime("%Y-%m-%d"), slot_key=slot["key"])
+                                 edition_date=now.strftime("%Y-%m-%d"), slot_key=slot["key"],
+                                 summary=summary, org=org,
+                                 reading_images=cfg.web.get("reading_images", "first"),
+                                 skim_expanded=bool(cfg.web.get("skim_expanded", False)))
         paths = save_edition(out_dir, page, now.strftime("%Y-%m-%d"), slot["key"])
         build_archive_index(out_dir, site_title=cfg.title)
         print(f"[pipeline] web edition -> {paths['edition']}", flush=True)
@@ -50,7 +58,10 @@ def run(cfg, history_path="history.json", now=None) -> None:
     cover = cfg.email_mode == "cover"
     html = build_html_email(title, themes, greeting=greeting,
                             edition_url=cfg.web.get("edition_url", ""), cover=cover,
-                            preheader=cover_preheader(themes, greeting) if cover else (greeting or lead))
+                            preheader=(cover_preheader(themes, greeting, summary) if cover
+                                       else (greeting or lead)),
+                            summary=summary, org=org, now=now,
+                            unsubscribe=cfg.email_unsubscribe, address=cfg.email_address)
     subject = top_pick_subject(title, themes) if cfg.email_subject == "top_pick" else None
     send_email(title, html, subject=subject, from_name=cfg.email_from_name)
 

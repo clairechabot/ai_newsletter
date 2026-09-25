@@ -5,28 +5,40 @@ The pipeline (`briefing/pipeline.py`) is source-agnostic: fetch -> dedup -> filt
 render (email + optional web edition).
 
 ## Optional features (all off by default, config-driven)
-- **email.mode** (`email.py`): `full` emails everything; `cover` emails a short cover + TOC that
-  links to the web edition. `EMAIL_RECIPIENT` may be a comma-separated list (each reader gets
+- **email.mode** (`email.py`): `full` emails everything; `cover` emails a triage-first cover
+  (tables + inline styles): the day in 30 seconds, a numbered reading order with read times, at
+  most 3 skim headlines per section with an "N more" link to `#skim-<n>` on the web edition, and
+  a CTA. `email.unsubscribe` / `email.address` add footer lines (default off). `EMAIL_RECIPIENT` may be a comma-separated list (each reader gets
   their own message). `email.subject: top_pick` puts the lead headline in the subject line;
   `email.from_name` sets the inbox sender name.
 - **priority** (`priority.py`): one Claude call after filtering labels each item `first` /
   `today` / `later` (in `item.extra["priority"]`, plus `extra["why"]`) against a company profile
-  in `priority.context`; themes are re-sorted by it, the email opens with a "Read first today" list
-  and the web edition with Read first / Read today cards. Fails soft to unlabeled items.
+  in `priority.context`; themes are re-sorted by it. The same call clusters duplicate coverage
+  (`same_as`): the lead keeps the others in `extra["also"]`, gets `extra["cluster_title"]` and the
+  group's best tier, and `prioritize` returns the list without them. `extra["rank"]` is Claude's
+  order. `priority.triage(themes)` gives the renderers' (reading order, skim) split. Fails soft to
+  unlabeled, unclustered items.
+- **summary** (`summary.py`): "The day in 30 seconds": one Claude call after theming, 3
+  `{lead, text, short, ref}` takeaways (`ref` = `{"stories": [..]}` or `{"section": n}`). Off by
+  default; [] on failure and the section is hidden.
 - **images** (`images.py`): after filtering, sets `item.extra["image"]` from the feed's own media
   (RSS `media:content` / enclosures, YouTube thumbnails) or the article's `og:image`. Fails soft per
-  item. Renderers show a large image on "Read first" / video cards and a thumbnail on the rest.
+  item. The same fetch sets `item.extra["minutes"]` (article words / 230 wpm; unset for stubs, and
+  renderers fall back to 3). The cover email shows one image (story 1); the web edition shows them
+  on Read first items (`web.reading_images: first|all|none`).
 - **palette** (`theme.py`): every colour the email and web edition use lives in `PALETTE`; CSS in
   `email.py` / `web.py` references `$name` placeholders filled by `theme.css()`.
 - **voice** (`voice.py`): an editor persona that writes the daily greeting and steers theme names.
   Always fails soft (no greeting on any error / when disabled). Recent greetings are kept in
   `history.json` (`recent_greetings`) and fed back as an avoid-list for variety.
-- **web** (`web.py`): builds `docs/index.html` (reading list on top, a sticky tab bar with one tab
-  per section using the short `theme["tab"]` label, priority chips, and one horizontally scrolling
-  card deck per section), a permanent `docs/editions/<date>-<slot>.html` that embeds its stories as
+- **web** (`web.py`): builds `docs/index.html` (a sticky triage bar with jump links and a read
+  progress bar, the day in 30 seconds + a time budget, the numbered reading order with "Mark as
+  read" kept in localStorage, and a skim list per section, `id="skim-<n>"`, with tap-for-gist rows;
+  `web.skim_expanded` opens them all), a permanent `docs/editions/<date>-<slot>.html` that embeds its stories as
   JSON (`<script id="edition-data">`), and rebuilds `docs/archive.html` from those embedded rows:
   every story ever sent, searchable, filterable, grouped by week. Served by GitHub Pages (`/docs`).
-  All markup is server-rendered; the inline JS only wires tabs, chips, arrows and the archive filters.
+  All markup is server-rendered and works without JS; the inline JS only adds read state, gist
+  toggles, smooth jumps and the archive filters.
 - **editions** (`editions.py`): AM/PM editions chosen by local hour; match the cron in `daily.yml`.
 
 ## Adding a source when asked (decision order)

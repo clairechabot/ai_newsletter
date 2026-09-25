@@ -28,8 +28,11 @@ sources:
 # ── Optional extensions ───────────────────────────────────────────────────────
 
 # email.mode: "full" (default) sends the whole briefing in the email.
-# "cover" sends a short cover (greeting + top item + table of contents) that
-# links out to the web edition — pair it with `web.enabled: true` below.
+# "cover" sends a short triage cover: the day in 30 seconds (with `summary`),
+# a numbered reading order with read times, a few headlines per section and a
+# button to the web edition — pair it with `web.enabled: true` below.
+# email.unsubscribe (a URL or mailto:) and email.address (a postal line) add
+# footer lines to the cover; both are blank by default.
 # email.subject: "date" (default) -> "My Daily Briefing - Sep 24, 2026".
 # "top_pick" -> "My Daily Briefing | <lead headline>", which gets more opens.
 # email.from_name: the sender name the inbox shows (e.g. "The Edge"); blank
@@ -38,6 +41,13 @@ sources:
 #   mode: cover
 #   subject: top_pick
 #   from_name: "The Edge"
+#   unsubscribe: "mailto:you@example.com?subject=Unsubscribe"
+#   address: "Acme Ltd · 1 Example Street, Zurich"
+
+# summary: "The day in 30 seconds": three one-line takeaways at the top of the
+# cover email and the web edition, each linking to the story or section that
+# backs it. One extra Claude call; fails soft (no summary) on any error.
+# summary: { enabled: true }
 
 # voice: give your briefing an AI editor persona — entirely yours to invent.
 # When enabled it writes a short daily greeting and names the themes in that
@@ -56,7 +66,9 @@ sources:
 # build, who buys it, who you compete with, what matters. It's sent to Claude
 # and shapes the "why" lines, which appear in the email and web edition, so keep
 # it to what you're comfortable publishing if your repo or site is public.
-# One extra Claude call per edition; fails soft (no labels) on any error.
+# The same call folds duplicate coverage of one event into a single entry
+# ("4 sources, 1 story"). One extra Claude call per edition; fails soft (no
+# labels, no clustering) on any error.
 # priority:
 #   enabled: true
 #   org: "Acme"
@@ -67,7 +79,8 @@ sources:
 # images: give each story its preview picture, the one publishers declare for
 # link previews (og:image), or the image the feed already supplies. Only the
 # stories that ship are looked up, in parallel; no Claude cost. Images are
-# linked, not downloaded. Stories without one render text-only.
+# linked, not downloaded. Stories without one render text-only. The same page
+# fetch measures each article for its read time ("4 min").
 # images:
 #   enabled: true
 #   timeout: 10   # seconds per article page
@@ -80,6 +93,8 @@ sources:
 #   enabled: true
 #   output_dir: "docs"
 #   edition_url: "https://YOURNAME.github.io/YOURREPO/"
+#   reading_images: first   # pictures in the reading order: first (default) | all | none
+#   skim_expanded: false    # true opens every skim headline's gist by default
 
 # editions: ship more than once a day. Listed in chronological order; each runs
 # when the local hour is before its `until_hour`. The last one is the catch-all.

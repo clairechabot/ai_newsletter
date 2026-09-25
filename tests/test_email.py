@@ -48,21 +48,91 @@ def test_cover_mode_is_short_and_links_to_edition():
     assert 'href="https://site/ed"' in html and "Open the full edition" in html
     assert 'href="https://site/ed/archive.html"' in html
 
-def test_cover_mode_with_labels():
+def _mk(t, source="Src", **extra):
+    return Item.make(source=source, source_type="rss", title=t, url="https://x/" + t.replace(" ", "-"),
+                     summary="a summary", published=datetime.now(timezone.utc), extra=extra)
+
+def _triage_themes():
+    also = [_mk("GPT-6 lands", source="OpenAI News"), _mk("Opus recap", source="Latent Space")]
+    first = _mk("Marketplace", priority="first", rank=0, why="Rail for <vertical> AI.",
+                image="https://cdn/a.jpg", minutes=4)
+    first2 = _mk("Model Vault", priority="first", rank=1, why="Sovereign.", image="https://cdn/b.jpg")
+    today = _mk("Price war", priority="today", rank=2, why="Cheaper.", minutes=6, also=also,
+                cluster_title="Opus 5.5 and GPT-6 land on the same day")
+    skim = [_mk(f"Skim {n}", priority="later", rank=3 + n) for n in range(5)]
+    return [{"name": "Anthropic Empire", "tab": "Anthropic", "emoji": "*",
+             "items": [first, today] + skim[:4]},
+            {"name": "Follow the Money", "tab": "Money", "emoji": "*", "items": [first2, skim[4]]}]
+
+SUMMARY = [{"lead": "Price war.", "text": "Opus 5.5 and GPT-6 cut frontier prices <40–50%>.",
+            "ref": {"stories": [3]}},
+           {"lead": "Money moves.", "text": "Deals.", "ref": None}]
+
+def test_cover_is_triage_first():
+    from datetime import datetime as dt
+    html = build_html_email("The Edge", _triage_themes(), edition_url="https://site/", cover=True,
+                            summary=SUMMARY, org="Khare", now=dt(2026, 9, 24, 6, 13),
+                            unsubscribe="mailto:u@x.com?subject=Unsubscribe", address="Khare, Zurich")
+    assert '<meta name="color-scheme" content="light dark">' in html and "<!--[if mso]>" in html
+    assert ">Thursday, 24 Sep</td>" in html
+    assert "3 to read</b> (~13 min) &middot; <b" in html and ">5</b> to skim &middot; 3 sources" in html
+    # the day in 30 seconds, escaped
+    assert "The day in 30 seconds" in html
+    assert "<b>Price war.</b> Opus 5.5 and GPT-6 cut frontier prices &lt;40–50%&gt;." in html
+    assert html.index("The day in 30 seconds") < html.index("Your reading order") < html.index("Skim if you have time")
+    # reading order: numbered, rank order, read times, for-org why, cluster sources
+    order = html.split("Your reading order")[1].split("Skim if you have time")[0]
+    assert "3 stories &middot; ~13 min" in order
+    assert order.index("Marketplace") < order.index("Model Vault") < order.index("Opus 5.5 and GPT-6 land")
+    assert "Src &middot; 4 min" in order and "Src &middot; 3 min" in order and "Src &middot; 6 min" in order
+    assert '<b style="color:#0047AB;">For Khare:</b> Rail for &lt;vertical&gt; AI.' in order
+    assert "Also covered by <a" in order and ">OpenAI News</a> &middot; <a" in order
+    assert order.count("<img") == 1 and 'src="https://cdn/a.jpg" width="556"' in order  # #1 only
+    assert "font-size:19px" in order and "font-size:17px" in order
+    assert 'color:#0047AB;line-height:30px;mso-line-height-rule:exactly;">3</td>' in order
+    # skim: at most three headlines, then a link to the rest on the web
+    skim = html.split("Skim if you have time")[1]
+    assert "Anthropic <span" in skim and "&middot; 4</span>" in skim
+    assert "Skim 0" in skim and "Skim 2" in skim and "Skim 3" not in skim
+    assert 'href="https://site/#skim-0"' in skim and "1 more in Anthropic &rarr;" in skim
+    assert "Skim 4" in skim and "#skim-1" not in skim  # a short section needs no link
+    assert "a summary" not in html  # no story bodies in the cover
+    # CTA and footer
+    assert 'bgcolor="#FF5F15"' in skim and "Open the full edition &rarr;" in skim
+    assert "The Edge is curated by Claude from 3 sources for the team at Khare." in skim
+    assert 'href="https://site/archive.html"' in skim and 'href="mailto:u@x.com?subject=Unsubscribe"' in skim
+    assert "Khare, Zurich" in skim
+
+def test_cover_preheader_leads_with_summary_then_shape():
     from briefing.email import cover_preheader
-    first = _item("Lead"); first.extra.update(priority="first", why="Matters <a lot>.", image="https://cdn/a.jpg")
-    today = _item("Soon"); today.extra.update(priority="today", why="Useful.", image="https://cdn/b.jpg")
-    later = _item("Later on"); later.extra["priority"] = "later"
-    themes = [{"name": "T", "emoji": "X", "items": [later, first, today]}]
-    html = build_html_email("The Edge", themes, edition_url="https://site/", cover=True)
-    body = html.split("</style>")[1]
-    assert body.index("Read first") < body.index("Read today") < body.index("Also in today")
-    assert '<img class="hero" src="https://cdn/a.jpg"' in body and "Matters &lt;a lot&gt;." in body
-    assert '<td class="thumb"' in body and 'src="https://cdn/b.jpg"' in body
-    assert "Later on" in body.split("Also in today")[1]
-    assert "<b>1</b> to read first" in body and "<b>1</b> more" in body
-    assert cover_preheader(themes) == "1 to read first · 1 today · 1 more. Lead"
-    assert cover_preheader([{"name": "T", "emoji": "", "items": [later]}], "Hi") == "Hi"
+    themes = _triage_themes()
+    pre = cover_preheader(themes, summary=SUMMARY)
+    assert pre == ("Price war: Opus 5.5 and GPT-6 cut frontier prices <40–50%>. "
+                   "2 to read first, 1 today (~13 min), 5 to skim.")
+    assert cover_preheader(themes) == "2 to read first, 1 today (~13 min), 5 to skim."
+    long = [{"lead": "Price war.", "text": "word " * 60, "ref": None}]
+    pre = cover_preheader(themes, summary=long)
+    assert len(pre) <= 140 and "word… 2 to read first" in pre
+    short = [dict(SUMMARY[0], short="Opus 5.5 and GPT-6 cut prices 40–50%")]
+    assert cover_preheader(themes, summary=short).startswith(
+        "Price war: Opus 5.5 and GPT-6 cut prices 40–50%. 2 to read first")
+    plain = [{"name": "T", "emoji": "", "items": [_item("Lead")]}]
+    assert cover_preheader(plain, "Hi") == "Hi" and cover_preheader(plain) == "Lead"
+
+def test_cover_without_priority_or_summary():
+    themes = [{"name": "Theme A", "emoji": "X", "items": [_item("Opening"), _item("Next")]}]
+    html = build_html_email("B", themes, edition_url="", cover=True)
+    assert "The day in 30 seconds" not in html and "For " not in html
+    order = html.split("Your reading order")[1].split("Skim if you have time")[0]
+    assert "Opening" in order and "Read first" not in order and "3 min" in order
+    assert "Next" in html.split("Skim if you have time")[1]
+    assert "Open the full edition" not in html and "more in" not in html  # nowhere to link to
+    assert "curated by Claude from 1 source." in html
+
+def test_full_mode_shows_cluster_sources():
+    it = _mk("Lead", also=[_mk("Dup", source="Other Pub")])
+    html = build_html_email("B", [{"name": "T", "emoji": "X", "items": [it]}])
+    assert "Also covered by <a" in html and ">Other Pub</a>" in html
 
 def test_recipients_parsing(monkeypatch):
     monkeypatch.delenv("EMAIL_RECIPIENTS", raising=False)

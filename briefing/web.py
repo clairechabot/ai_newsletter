@@ -1,18 +1,19 @@
 """Web edition — the browsable version of the day's briefing, plus the Archive.
 
-Layout (desktop first, works on a phone):
+Layout (desktop first, works on a phone), built for triage:
 
-* the opening is the reading list: "Read first" stories as image cards and
-  "Read today" as a compact list, both only when priority labels exist;
-* a sticky tab bar with one tab per section (short `theme["tab"]` label,
-  story count, an orange pip when the section holds a Read first);
-* a row of priority chips that filters every section at once;
-* one panel per section holding a horizontally scrolling, snap-by-card deck
-  of story cards (arrow buttons on desktop, swipe on touch).
+* a sticky triage bar: jump links to Summary / Read first / Read today / Skim
+  and a "2 of 4 read" progress bar;
+* "The day in 30 seconds" (summary.py) beside a time budget (5 min, 15 min,
+  +10 min), only when a summary exists;
+* one numbered reading order: Read first, then Read today, in Claude's rank
+  order, each with a read time, the why line, other sources for a cluster, a
+  "Mark as read" toggle and (Read first by default) a picture;
+* everything else as a skim list per section; tap a headline for its gist.
 
-Without JavaScript the page still reads top to bottom: every panel is
-rendered and the decks scroll with plain CSS; the script only wires the tabs,
-chips and arrows.
+Without JavaScript the page still reads top to bottom: every gist is open
+and every jump link is a plain anchor; the script only adds the read state
+(kept in this browser's localStorage), the gist toggles and smooth scrolling.
 
 Each edition embeds its stories as JSON in `<script id="edition-data">`, so
 `build_archive_index` can rebuild the Archive from the saved editions alone:
@@ -36,7 +37,8 @@ import re
 from datetime import datetime, timezone
 from html import escape
 from briefing.theme import css
-from briefing.priority import LABELS, TIERS, rank
+from briefing.priority import LABELS, TIERS, triage, all_items, read_minutes, display_title
+from briefing.summary import ref_target
 
 _EDITION_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})-(.+)\.html$")
 _DATA_RE = re.compile(r'<script id="edition-data" type="application/json">(.*?)</script>', re.S)
@@ -112,133 +114,152 @@ _BASE_CSS = css(
 )
 
 _EDITION_CSS = css(
-    ".open{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:32px;"
-    "padding:22px 0 30px;align-items:start}"
-    ".hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:20px}"
-    ".hcard{display:flex;flex-direction:column;border:1px solid $rule;border-radius:4px;"
-    "overflow:hidden;background:$white}"
-    ".hcard>a>img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}"
-    ".hcard .body{padding:14px 16px 16px;display:grid;gap:8px}"
-    ".hcard h3{font:700 21px/1.2 Archivo,Arial,sans-serif;margin:0;text-wrap:balance}"
-    ".hcard .why{background:$orange_tint;padding:8px 10px;border-radius:2px;font-size:14px}"
-    ".hcard .why b{display:block;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:.08em;"
-    "text-transform:uppercase;color:#8A3207;margin-bottom:1px}"
-    ".tlist{display:grid;gap:10px}"
-    ".trow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;padding:12px;"
-    "border:1px solid $rule;border-radius:4px}"
-    ".trow.noimg{grid-template-columns:minmax(0,1fr)}"
-    ".trow>a>img{width:96px;height:72px;object-fit:cover;border-radius:2px;display:block}"
-    ".trow h4{font:700 15.5px/1.25 Archivo,Arial,sans-serif;margin:3px 0 4px}"
-    ".tabbar{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.94);"
-    "backdrop-filter:blur(8px);border-top:2px solid $black;border-bottom:1px solid $rule}"
-    ".tabbar-in{max-width:1180px;margin:0 auto;padding:0 40px;position:relative}"
-    ".tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}"
-    ".tabs::-webkit-scrollbar{display:none}"
-    ".tab{position:relative;flex:none;appearance:none;background:none;border:0;cursor:pointer;"
-    "white-space:nowrap;padding:16px 11px 14px;font:700 11.5px 'IBM Plex Sans',sans-serif;"
-    "letter-spacing:.06em;text-transform:uppercase;color:$muted}"
-    ".tab .ix{font:500 12px 'IBM Plex Mono',monospace;color:$orange;margin-right:7px;letter-spacing:0}"
-    ".tab .n{font:500 11px 'IBM Plex Mono',monospace;color:$muted;margin-left:6px;letter-spacing:0}"
-    ".tab .pip{display:inline-block;width:7px;height:7px;border-radius:50%;background:$orange;"
-    "margin-left:7px;vertical-align:1px}"
-    ".tab:hover{color:$ink}.tab[aria-selected=true]{color:$black}"
-    ".tab::after{content:'';position:absolute;left:11px;right:11px;bottom:-1px;height:3px;"
-    "background:$orange;transform:scaleX(0);transition:transform .2s ease}"
-    ".tab[aria-selected=true]::after{transform:scaleX(1)}"
-    ".filter-row{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;align-items:center;"
-    "padding:14px 0 0}"
-    ".panel{padding:16px 0 40px}"
-    ".sec-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;"
-    "gap:8px 24px;margin-bottom:18px}"
-    ".sec-head h2{font:900 clamp(26px,3.2vw,38px)/1.05 Archivo,Arial,sans-serif;margin:0;"
+    "#summary,#order,#skim,.item,.skim-col{scroll-margin-top:64px}"
+    # Sticky triage bar: jump links on the left, reading progress on the right.
+    ".tbar{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.95);"
+    "-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid $rule}"
+    ".tbar-in{max-width:1180px;margin:0 auto;padding:0 40px;display:flex;align-items:center;"
+    "justify-content:space-between;gap:0 24px;flex-wrap:wrap}"
+    ".tjump{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}"
+    ".tjump::-webkit-scrollbar{display:none}"
+    ".tj{flex:none;white-space:nowrap;padding:15px 11px 13px;font:700 11.5px 'IBM Plex Sans',sans-serif;"
+    "letter-spacing:.06em;text-transform:uppercase;color:$ink;text-decoration:none}"
+    ".tj:hover{color:$cobalt}"
+    ".tj .ix{font:500 12px 'IBM Plex Mono',monospace;color:$orange;margin-right:7px;letter-spacing:0}"
+    ".tj .n{font:500 11px 'IBM Plex Mono',monospace;color:$muted;margin-left:6px;letter-spacing:0}"
+    ".prog{display:flex;align-items:center;gap:10px;font:500 12px 'IBM Plex Mono',monospace;"
+    "color:$muted;padding:8px 0}"
+    ".prog b{color:$ink;font-weight:500}"
+    ".track{display:block;width:96px;height:6px;background:$paper;border-radius:3px;overflow:hidden}"
+    ".fill{display:block;height:100%;width:0;background:$orange;transition:width .25s ease}"
+    # The day in 30 seconds + time budget.
+    ".sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));"
+    "gap:28px 40px;padding:26px 0 36px;align-items:start}"
+    ".sum-main{grid-column:span 2;min-width:min(100%,340px)}"
+    ".sum .h{margin:0 0 18px}"
+    ".takeaways{list-style:none;margin:0;padding:0;display:grid;gap:18px}"
+    ".takeaways li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:6px}"
+    ".takeaways .ix{font:500 13px/2.1 'IBM Plex Mono',monospace;color:$orange}"
+    ".takeaways p{font:500 22px/1.32 Archivo,Arial,sans-serif;margin:0;text-wrap:pretty;"
     "letter-spacing:-.005em}"
-    ".sec-meta{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;"
-    "font:12px 'IBM Plex Mono',monospace;color:$muted}"
-    ".deck-wrap{position:relative}"
-    ".deck{display:flex;gap:22px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;"
-    "scroll-padding-inline:2px;padding:2px 2px 16px;scrollbar-width:thin;"
-    "scrollbar-color:$rule transparent;-webkit-overflow-scrolling:touch}"
-    ".deck::-webkit-scrollbar{height:8px}.deck::-webkit-scrollbar-thumb{background:$rule;"
-    "border-radius:100px}.deck::-webkit-scrollbar-track{background:transparent}"
-    ".dcard{flex:0 0 auto;width:312px;scroll-snap-align:start;display:flex;flex-direction:column;"
-    "border:1px solid $rule;border-radius:4px;background:$white;overflow:hidden}"
-    ".dcard.first{box-shadow:inset 0 4px 0 $orange}"
-    ".dcard>a>img{width:100%;aspect-ratio:3/2;object-fit:cover;display:block}"
-    ".dcard .body{padding:12px 14px 14px;display:grid;gap:7px;align-content:start}"
-    ".dcard h3{font:700 18px/1.2 Archivo,Arial,sans-serif;margin:0;text-wrap:balance}"
-    ".deck-nav{position:absolute;top:calc(50% - 30px);width:38px;height:38px;border-radius:50%;"
-    "border:1px solid $rule;background:$white;box-shadow:0 2px 8px rgba(0,0,0,.12);"
-    "display:grid;place-items:center;cursor:pointer;color:$ink;z-index:2;padding:0}"
-    ".deck-nav svg{width:18px;height:18px}"
-    ".deck-nav.prev{left:-19px}.deck-nav.next{right:-19px}"
-    ".deck-nav[disabled]{opacity:0;pointer-events:none}"
-    ".deck-count{font:12px 'IBM Plex Mono',monospace;color:$muted;margin-top:2px;min-height:1.2em}"
-    ".empty-note{font-size:14px;color:$muted;padding:18px 0}"
-    "@media (max-width:900px){.open{grid-template-columns:minmax(0,1fr);gap:24px}}"
-    # Phone: opening stacks, tabs scroll with a fade hint, decks bleed to the
-    # screen edge and swipe card by card; arrows go.
-    "@media (max-width:640px){.tabbar-in{padding:0}"
-    ".tabbar-in::after{content:'';position:absolute;top:0;right:0;bottom:0;width:36px;"
-    "background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.96));pointer-events:none}"
-    ".tab{padding:14px 12px 12px}.tabs{padding-left:6px;padding-right:36px}"
-    ".deck{margin:0 -16px;padding:2px 16px 14px;gap:14px;scroll-padding-inline:16px}"
-    ".dcard{width:min(300px,80vw)}.deck-nav{display:none}.filter-row{justify-content:flex-start}"
-    ".hcard h3{font-size:19px}}"
+    ".takeaways p b{font-weight:800}"
+    ".jump{display:inline-block;padding:6px 0 0;font:500 11.5px 'IBM Plex Mono',monospace;"
+    "letter-spacing:.06em;text-transform:uppercase;color:$cobalt;text-decoration:none}"
+    ".jump:hover{text-decoration:underline}"
+    ".budget{border:2px solid $black;border-radius:4px;padding:18px 20px 12px}"
+    ".budget .bt{font:800 12.5px Archivo,Arial,sans-serif;font-stretch:112%;letter-spacing:.16em;"
+    "text-transform:uppercase;margin:0 0 6px}"
+    ".brow{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;align-items:baseline;"
+    "border-top:1px solid $rule;padding:12px 0;color:$ink;text-decoration:none}"
+    ".brow:hover{color:$cobalt}"
+    ".brow .time{font:500 16px 'IBM Plex Mono',monospace;color:$orange}"
+    ".brow .what{font:600 14.5px/1.4 'IBM Plex Sans',sans-serif}"
+    ".brow .what span{display:block;font-weight:400;font-size:13px;color:$muted}"
+    # Reading order.
+    ".order{padding:0 0 40px}.order .h{margin:0 0 4px}"
+    ".sum+.order{padding-top:0}.dateline+.order,.greeting+.order{padding-top:26px}"
+    ".item{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:4px 20px;padding:22px 0;"
+    "border-bottom:1px solid $rule;transition:opacity .2s ease}"
+    ".item.read{opacity:.5}"
+    ".num{font:900 40px/1 Archivo,Arial,sans-serif;font-stretch:112%;color:$orange;padding-top:2px}"
+    ".item.today .num{color:$cobalt}.item.read .num{color:$muted}"
+    ".item-body{display:grid;gap:9px;align-content:start;max-width:720px}"
+    ".meta .quiet{color:$muted}"
+    ".item h3{font:700 25px/1.18 Archivo,Arial,sans-serif;margin:0;text-wrap:balance}"
+    ".whybox{background:$orange_tint;padding:9px 12px;border-radius:2px;font-size:14.5px;line-height:1.45}"
+    ".whybox b{display:block;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:.08em;"
+    "text-transform:uppercase;color:#8A3207;margin-bottom:2px}"
+    ".gist{color:$muted;font-size:14px;line-height:1.5;margin:0}"
+    ".also{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13.5px;color:$muted}"
+    ".also a{color:$cobalt}"
+    ".acts{display:flex;gap:10px;align-items:center;padding-top:4px}"
+    ".mark{appearance:none;cursor:pointer;white-space:nowrap;font:500 12.5px 'IBM Plex Sans',sans-serif;"
+    "padding:5px 12px;border-radius:999px;border:1px solid $rule;background:$white;color:$ink}"
+    ".mark[aria-pressed=true]{background:$black;border-color:$black;color:$white}"
+    ".open-link{font:500 12.5px 'IBM Plex Sans',sans-serif;color:$cobalt}"
+    ".item-pic{display:block;width:260px}"
+    ".item-pic img{display:block;width:260px;aspect-ratio:16/9;object-fit:cover;border-radius:4px;"
+    "border:1px solid $rule}"
+    # Skim.
+    ".skim{padding:0 0 48px}.skim .h{margin:0 0 6px}"
+    ".skim-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));"
+    "gap:8px 36px;align-items:start}"
+    ".skim-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;"
+    "padding:16px 0 8px;border-bottom:2px solid $black}"
+    ".skim-head h3{font:800 19px/1.2 Archivo,Arial,sans-serif;margin:0}"
+    ".skim-head span{font:12px 'IBM Plex Mono',monospace;color:$muted;white-space:nowrap}"
+    ".srow{border-bottom:1px solid $rule}"
+    ".stog{appearance:none;width:100%;text-align:left;background:none;border:0;cursor:pointer;"
+    "padding:10px 0;display:grid;grid-template-columns:minmax(0,1fr) 16px;gap:10px;align-items:start;"
+    "color:$ink;font:inherit}"
+    ".stog:hover{color:$cobalt}"
+    ".stog b{display:block;font:600 14.5px/1.3 Archivo,Arial,sans-serif}"
+    ".stog .src{font:11px 'IBM Plex Mono',monospace;color:$muted}"
+    ".stog .sign{font:500 14px/1.3 'IBM Plex Mono',monospace;color:$muted}"
+    ".sgist{padding:0 26px 12px 0;font-size:13.5px;line-height:1.5;color:#333333;display:grid;gap:6px}"
+    ".sgist a{color:$cobalt;font-weight:500;justify-self:start}"
+    "@media (max-width:900px){.item{grid-template-columns:64px minmax(0,1fr)}"
+    ".item-pic{grid-column:2;width:100%}.item-pic img{width:100%}}"
+    "@media (max-width:760px){.sum-main{grid-column:auto}}"
+    "@media (max-width:640px){.tbar-in{padding:0 16px}.tjump{margin-left:-11px}"
+    ".item{grid-template-columns:44px minmax(0,1fr);gap:4px 12px}.num{font-size:30px}"
+    ".item h3{font-size:21px}.takeaways p{font-size:19px}.takeaways li{grid-template-columns:28px minmax(0,1fr)}}"
 )
 
+# Progressive enhancement only: without it every section is open and every
+# jump link is a plain anchor. Read state lives in this browser (localStorage).
 _EDITION_JS = r"""
 (function(){
-  var tabs=[].slice.call(document.querySelectorAll('.tab'));
-  var panels=[].slice.call(document.querySelectorAll('.panel'));
-  var chips=[].slice.call(document.querySelectorAll('.filter-row .chip'));
-  var filter='all', current=0;
-  function layoutDeck(panel){
-    var deck=panel.querySelector('.deck'); if(!deck) return;
-    var cards=[].slice.call(deck.querySelectorAll('.dcard')), n=0;
-    cards.forEach(function(c){var on=filter==='all'||c.getAttribute('data-p')===filter;c.hidden=!on;if(on)n++;});
-    var empty=panel.querySelector('.empty-note'), wrap=panel.querySelector('.deck-wrap');
-    if(empty) empty.hidden=n>0; if(wrap) wrap.hidden=n===0;
-    var count=panel.querySelector('.sec-count');
-    if(count) count.textContent=filter==='all'?cards.length+' stories':n+' of '+cards.length+' stories';
-    var w=deck.clientWidth, total=deck.scrollWidth, first=cards.filter(function(c){return !c.hidden;})[0];
-    var gap=parseFloat(getComputedStyle(deck).columnGap||getComputedStyle(deck).gap)||22;
-    var per=first?Math.max(1,Math.floor((w+gap)/(first.offsetWidth+gap))):n;
-    var dc=panel.querySelector('.deck-count');
-    if(dc) dc.textContent=n>per?'Showing '+Math.min(per,n)+' of '+n+' \u00b7 scroll or use the arrows for the rest':'';
-    var prev=panel.querySelector('.prev'), next=panel.querySelector('.next');
-    function sync(){ if(prev) prev.disabled=deck.scrollLeft<=2; if(next) next.disabled=deck.scrollLeft+w>=total-2; }
-    sync(); deck.onscroll=sync;
-    if(prev) prev.onclick=function(){deck.scrollBy({left:-w*0.9,behavior:'smooth'});};
-    if(next) next.onclick=function(){deck.scrollBy({left:w*0.9,behavior:'smooth'});};
-  }
-  function show(n){
-    current=n;
-    tabs.forEach(function(t){t.setAttribute('aria-selected',String(+t.getAttribute('data-n')===n));});
-    panels.forEach(function(p){p.hidden=+p.getAttribute('data-n')!==n;});
-    if(panels[n]) layoutDeck(panels[n]);
-    try{history.replaceState(null,'','#s'+(n+1));}catch(e){}
-  }
-  tabs.forEach(function(t){t.addEventListener('click',function(){show(+t.getAttribute('data-n'));});});
-  chips.forEach(function(b){b.addEventListener('click',function(){
-    filter=b.getAttribute('data-f');
-    chips.forEach(function(x){x.setAttribute('aria-pressed',String(x===b));});
-    tabs.forEach(function(t,n){
-      var has=filter==='all'||!!panels[n].querySelector('.dcard[data-p="'+filter+'"]');
-      t.hidden=!has;
+  var order=document.getElementById('order'), key=order&&order.getAttribute('data-key');
+  var read={};
+  try{read=JSON.parse(localStorage.getItem(key)||'{}')||{};}catch(e){}
+  function save(){try{localStorage.setItem(key,JSON.stringify(read));}catch(e){}}
+  var items=[].slice.call(document.querySelectorAll('.item'));
+  var done=document.getElementById('done'), fill=document.getElementById('fill');
+  function paint(){
+    var n=0;
+    items.forEach(function(el){
+      var r=!!read[el.getAttribute('data-n')]; if(r) n++;
+      el.classList.toggle('read',r);
+      var num=el.querySelector('.num'); num.textContent=r?'\u2713':num.getAttribute('data-num');
+      var b=el.querySelector('.mark'); b.setAttribute('aria-pressed',String(r));
+      b.textContent=r?'Read \u2713':'Mark as read';
     });
-    var firstVisible=tabs.map(function(t,n){return t.hidden?-1:n;}).filter(function(n){return n>=0;})[0];
-    show(tabs[current]&&!tabs[current].hidden?current:(firstVisible==null?0:firstVisible));
-  });});
-  window.addEventListener('resize',function(){if(panels[current]) layoutDeck(panels[current]);});
-  var m=/^#s(\d+)$/.exec(location.hash), start=m?Math.min(panels.length-1,Math.max(0,+m[1]-1)):0;
-  if(panels.length) show(start);
+    if(done) done.textContent=n;
+    if(fill) fill.style.width=(items.length?n/items.length*100:0)+'%';
+  }
+  items.forEach(function(el){
+    var b=el.querySelector('.mark'); b.hidden=false;
+    b.addEventListener('click',function(){
+      var i=el.getAttribute('data-n'); if(read[i]) delete read[i]; else read[i]=true;
+      save(); paint();
+    });
+  });
+  var prog=document.querySelector('.prog'); if(prog) prog.hidden=false;
+  paint();
+  var skim=document.getElementById('skim'), openAll=skim&&skim.getAttribute('data-expanded')==='true';
+  [].slice.call(document.querySelectorAll('.stog')).forEach(function(b){
+    var g=document.getElementById(b.getAttribute('aria-controls'));
+    function set(open){b.setAttribute('aria-expanded',String(open)); if(g) g.hidden=!open;
+      b.querySelector('.sign').textContent=open?'\u2212':'+';}
+    set(openAll);
+    b.addEventListener('click',function(){set(b.getAttribute('aria-expanded')!=='true');});
+  });
+  var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  [].slice.call(document.querySelectorAll('a.go')).forEach(function(a){
+    a.addEventListener('click',function(e){
+      var id=a.getAttribute('href').slice(1), el=document.getElementById(id); if(!el) return;
+      e.preventDefault();
+      window.scrollTo({top:el.getBoundingClientRect().top+window.scrollY-64,behavior:still?'auto':'smooth'});
+      try{history.replaceState(null,'','#'+id);}catch(x){}
+    });
+  });
 })();
 """
 
-_CHEV = ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" '
-         'aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>')
-_CHEV_L = ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" '
-           'aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>')
+_NUMBER_WORDS = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
+                 "nine", "ten")
+READING_IMAGES = ("first", "all", "none")
 
 
 def _safe_url(url) -> str:
@@ -251,7 +272,7 @@ def _image(item) -> str:
 
 
 def tab_label(name, limit=TAB_MAX) -> str:
-    """A short label for the tab bar when Claude didn't supply one: whole
+    """A short label for a section when Claude didn't supply one: whole
     words up to `limit` characters, then an ellipsis."""
     name = " ".join((name or "").split())
     if len(name) <= limit:
@@ -273,135 +294,193 @@ def _badge(item) -> str:
             if tier in LABELS else "")
 
 
-def _meta(item, date_str) -> str:
-    return (f'<div class="meta">{_badge(item)}<span>{escape(item.source)}</span>'
-            f'<time>{escape(date_str)}</time></div>')
+def _words(n) -> str:
+    return _NUMBER_WORDS[n] if 0 <= n < len(_NUMBER_WORDS) else str(n)
 
 
-def _pic(item, cls="") -> str:
-    """Linked image, or "" when the item has none. Hotlinked, so a broken
-    image removes itself rather than showing an icon."""
-    img = _image(item)
-    if not img:
-        return ""
-    href = escape(_safe_url(item.url), quote=True)
-    return (f'<a href="{href}" class="{cls}" tabindex="-1"><img src="{escape(img, quote=True)}" '
-            f'alt="" loading="lazy" referrerpolicy="no-referrer" '
-            f'onerror="this.parentNode.remove()"></a>')
+def _plural(n, one, many) -> str:
+    return f"{n} {one if n == 1 else many}"
 
 
-def _title_link(item, tag="h3") -> str:
-    href = escape(_safe_url(item.url), quote=True)
-    return f'<{tag}><a class="t" href="{href}">{escape(item.title)}</a></{tag}>'
+def _story_range(first, last) -> str:
+    """"story 1", "stories 1 and 2", "stories 1–3"."""
+    if first == last:
+        return f"story {first}"
+    if last == first + 1:
+        return f"stories {first} and {last}"
+    return f"stories {first}–{last}"
 
 
-def _why(item, label="Why:") -> str:
-    why = item.extra.get("why")
-    return f'<div class="why"><b>{label}</b> {escape(why)}</div>' if why else ""
+def _section_of(themes) -> dict:
+    return {id(i): (t.get("tab") or tab_label(t["name"])) for t in themes for i in t["items"]}
 
 
-def _hcard(item, date_str) -> str:
-    why = item.extra.get("why")
-    why_html = (f'<div class="why"><b>Why it matters</b>{escape(why)}</div>' if why else "")
-    return (f'<article class="hcard">{_pic(item)}<div class="body">{_meta(item, date_str)}'
-            f'{_title_link(item)}{why_html}</div></article>')
-
-
-def _trow(item, date_str) -> str:
-    pic = _pic(item)
-    return (f'<article class="trow{"" if pic else " noimg"}">{pic}<div>{_meta(item, date_str)}'
-            f'{_title_link(item, "h4")}{_why(item)}</div></article>')
-
-
-def _dcard(item, date_str) -> str:
-    tier = item.extra.get("priority", "")
-    preview = f'<p class="preview">{escape(item.summary)}</p>' if item.summary else ""
-    return (f'<article class="dcard{" first" if tier == "first" else ""}" data-p="{escape(tier)}">'
-            f'{_pic(item)}<div class="body">{_meta(item, date_str)}{_title_link(item)}'
-            f'{_why(item)}{preview}</div></article>')
-
-
-def _opening(themes, date_str) -> str:
-    """The reading list: Read first as image cards, Read today as a list.
-    Empty when nothing is labelled (priority off)."""
-    items = [i for t in themes for i in t["items"]]
-    firsts = [i for i in items if i.extra.get("priority") == "first"]
-    todays = [i for i in items if i.extra.get("priority") == "today"]
-    if not firsts and not todays:
-        return ""
-    cols = ""
+def _triage_bar(summary, order, n_skim) -> str:
+    firsts = [n for n, i in enumerate(order) if i.extra.get("priority") == "first"]
+    todays = [n for n, i in enumerate(order) if i.extra.get("priority") == "today"]
+    links = []
+    if summary:
+        links.append(("Summary", "", "summary"))
     if firsts:
-        cols += (f'<div><h2 class="h">Read first <span>{len(firsts)}</span></h2>'
-                 f'<div class="hero">{"".join(_hcard(i, date_str) for i in firsts)}</div></div>')
+        links.append(("Read first", str(len(firsts)), f"order-{firsts[0]}"))
     if todays:
-        cols += (f'<div><h2 class="h">Read today <span>{len(todays)}</span></h2>'
-                 f'<div class="tlist">{"".join(_trow(i, date_str) for i in todays)}</div></div>')
-    return f'<div class="open">{cols}</div>'
+        links.append(("Read today", str(len(todays)), f"order-{todays[0]}"))
+    if order and not firsts and not todays:
+        links.append(("Reading order", str(len(order)), "order"))
+    if n_skim:
+        links.append(("Skim", str(n_skim), "skim"))
+    tabs = "".join(
+        f'<a class="tj go" href="#{target}"><span class="ix">{n:02d}</span>{label}'
+        + (f'<span class="n">{count}</span>' if count else "") + "</a>"
+        for n, (label, count, target) in enumerate(links, 1))
+    prog = (f'<div class="prog" hidden><span><b id="done">0</b> of {len(order)} read</span>'
+            f'<span class="track"><span class="fill" id="fill"></span></span></div>' if order else "")
+    return (f'<nav class="tbar" aria-label="Sections"><div class="tbar-in">'
+            f'<div class="tjump">{tabs}</div>{prog}</div></nav>')
 
 
-def _filter_row(themes) -> str:
-    items = [i for t in themes for i in t["items"]]
-    if not any(i.extra.get("priority") in TIERS for i in items):
+def _budget(order, n_skim, org) -> str:
+    rows = []
+    firsts = [i for i in order if i.extra.get("priority") == "first"]
+    if firsts:
+        who = f"what {escape(org)} does" if org else "what you do"
+        n_first = len(firsts)
+        rows.append((f"{sum(read_minutes(i) for i in firsts)} min",
+                     f"Read {_story_range(1, n_first)}",
+                     f"The one that changes {who} this quarter" if n_first == 1 else
+                     f"The {_words(n_first)} that change {who} this quarter", "order-0"))
+    if len(order) > len(firsts):
+        n_today = len(order) - len(firsts)
+        rows.append((f"{sum(read_minutes(i) for i in order)} min",
+                     f"All {_words(len(order))} in the reading order" if len(order) > 1
+                     else "The story in the reading order",
+                     f"Adds the {_words(n_today) if n_today > 1 else 'one'} to read today"
+                     if firsts else "The day's lead stories", "order-0"))
+    if n_skim:
+        rows.append((f"+{max(1, round(n_skim * 0.5))} min",
+                     f"Skim the other {n_skim}" if order else f"Skim all {n_skim}",
+                     "Headlines only; tap for a one-line gist", "skim"))
+    if not rows:
         return ""
-    counts = {"all": len(items)}
-    for tier in TIERS:
-        counts[tier] = sum(1 for i in items if i.extra.get("priority") == tier)
-    chips = "".join(
-        f'<button class="chip" type="button" data-f="{k}" aria-pressed="{"true" if k == "all" else "false"}">'
-        f'{"All" if k == "all" else escape(LABELS[k])}<em>{counts[k]}</em></button>'
-        for k in ("all",) + TIERS)
-    return f'<div class="wrap"><div class="filter-row chips"><span class="lbl">Show</span>{chips}</div></div>'
+    body = "".join(
+        f'<a class="brow go" href="#{target}"><span class="time">{time}</span>'
+        f'<span class="what">{what}<span>{detail}</span></span></a>'
+        for time, what, detail, target in rows)
+    return f'<aside class="budget"><div class="bt">How much time do you have?</div>{body}</aside>'
 
 
-def _tabbar(themes) -> str:
-    tabs = ""
-    for n, theme in enumerate(themes):
-        first = sum(1 for i in theme["items"] if i.extra.get("priority") == "first")
-        label = theme.get("tab") or tab_label(theme["name"])
-        tabs += (f'<button class="tab" role="tab" id="tab-{n}" aria-controls="panel-{n}" '
-                 f'aria-selected="{"true" if n == 0 else "false"}" data-n="{n}" '
-                 f'title="{escape(theme["name"], quote=True)}"><span class="ix">{n + 1:02d}</span>'
-                 f'{escape(label)}<span class="n">{len(theme["items"])}</span>'
-                 + (f'<span class="pip" title="{first} to read first"></span>' if first else "")
-                 + "</button>")
-    return (f'<nav class="tabbar" aria-label="Sections"><div class="tabbar-in">'
-            f'<div class="tabs" role="tablist">{tabs}</div></div></nav>')
+def _summary_section(summary, order, skim, org) -> str:
+    if not summary:
+        return ""
+    names = [t.get("tab") or tab_label(t["name"]) for t, _ in skim]
+    lis = ""
+    for n, s in enumerate(summary, 1):
+        label, target = ref_target(s.get("ref"), names)
+        jump = (f'<a class="jump go" href="#{target}">→ {escape(label)}</a>' if target else "")
+        lis += (f'<li><span class="ix">{n:02d}</span><div><p><b>{escape(s["lead"])}</b> '
+                f'{escape(s["text"])}</p>{jump}</div></li>')
+    n_skim = sum(len(its) for _, its in skim)
+    return (f'<section class="sum" id="summary"><div class="sum-main">'
+            f'<h2 class="h">The day in 30 seconds</h2><ol class="takeaways">{lis}</ol></div>'
+            f'{_budget(order, n_skim, org)}</section>')
 
 
-def _panel(n, theme, date_str) -> str:
-    items = sorted(theme["items"], key=rank)
-    first = sum(1 for i in items if i.extra.get("priority") == "first")
-    today = sum(1 for i in items if i.extra.get("priority") == "today")
-    dots = ((f'<span><i class="dot first"></i>{first} read first</span>' if first else "")
-            + (f'<span><i class="dot today"></i>{today} read today</span>' if today else ""))
-    cards = "".join(_dcard(i, date_str) for i in items)
-    return (f'<section class="panel" id="panel-{n}" role="tabpanel" aria-labelledby="tab-{n}" '
-            f'data-n="{n}"><div class="wrap"><div class="sec-head"><h2>{escape(theme["name"])}</h2>'
-            f'<div class="sec-meta"><span class="sec-count">{len(items)} stories</span>{dots}</div></div>'
-            f'<div class="deck-wrap"><button class="deck-nav prev" type="button" '
-            f'aria-label="Previous cards">{_CHEV_L}</button><div class="deck" tabindex="0">{cards}</div>'
-            f'<button class="deck-nav next" type="button" aria-label="Next cards">{_CHEV}</button></div>'
-            f'<div class="deck-count"></div>'
-            f'<p class="empty-note" hidden>No stories in this section match the filter.</p>'
-            f'</div></section>')
+def _order_item(n, item, section, org, reading_images) -> str:
+    tier = item.extra.get("priority") or ""
+    href = escape(_safe_url(item.url), quote=True)
+    ext = 'target="_blank" rel="noopener"'
+    also = item.extra.get("also") or []
+    meta = (f'<div class="meta">{_badge(item)}<span>{escape(item.source)}</span>'
+            f'<span class="quiet">{escape(section)} · {read_minutes(item)} min</span>'
+            + (f'<span class="quiet">· {len(also) + 1} sources, 1 story</span>' if also else "")
+            + "</div>")
+    why = item.extra.get("why")
+    why_html = (f'<div class="whybox"><b>Why it matters{escape(f" for {org}") if org else ""}</b>'
+                f'{escape(why)}</div>' if why else "")
+    gist = f'<p class="gist">{escape(item.summary)}</p>' if item.summary else ""
+    also_html = ('<div class="also"><span>Also covered by</span>' + "".join(
+        f'<a href="{escape(_safe_url(a.url), quote=True)}" {ext} '
+        f'title="{escape(a.title, quote=True)}">{escape(a.source)}</a>' for a in also)
+        + "</div>" if also else "")
+    img = _image(item)
+    show = reading_images == "all" or (reading_images == "first" and tier == "first")
+    pic = (f'<a class="item-pic" href="{href}" {ext} tabindex="-1">'
+           f'<img src="{escape(img, quote=True)}" alt="" loading="lazy" referrerpolicy="no-referrer" '
+           f'onerror="this.parentNode.remove()"></a>' if img and show else "")
+    return (f'<article class="item{" " + tier if tier else ""}" id="order-{n}" data-n="{n}">'
+            f'<div class="num" data-num="{n + 1}">{n + 1}</div><div class="item-body">{meta}'
+            f'<h3><a class="t" href="{href}" {ext}>{escape(display_title(item))}</a></h3>'
+            f'{why_html}{gist}{also_html}<div class="acts">'
+            f'<button class="mark" type="button" aria-pressed="false" hidden>Mark as read</button>'
+            f'<a class="open-link" href="{href}" {ext}>Open article ↗</a></div></div>{pic}</article>')
+
+
+def _order_section(order, themes, org, reading_images, read_key) -> str:
+    if not order:
+        return ""
+    section = _section_of(themes)
+    minutes = sum(read_minutes(i) for i in order)
+    rows = "".join(_order_item(n, i, section.get(id(i), ""), org, reading_images)
+                   for n, i in enumerate(order))
+    return (f'<section class="order" id="order" data-key="{escape(read_key, quote=True)}">'
+            f'<h2 class="h">Read in this order<span>{_plural(len(order), "story", "stories")} · '
+            f'~{minutes} min</span></h2>{rows}</section>')
+
+
+def _skim_section(skim, expanded) -> str:
+    if not skim:
+        return ""
+    n_skim = sum(len(its) for _, its in skim)
+    cols = ""
+    for s, (theme, items) in enumerate(skim):
+        rows = ""
+        for r, i in enumerate(items):
+            gid = f"gist-{s}-{r}"
+            summary = escape(i.summary) if i.summary else \
+                "No summary in the feed; open the article for the full story."
+            rows += (f'<div class="srow"><button class="stog" type="button" aria-expanded="true" '
+                     f'aria-controls="{gid}"><span><b>{escape(i.title)}</b>'
+                     f'<span class="src">{escape(i.source)}</span></span>'
+                     f'<span class="sign" aria-hidden="true">−</span></button>'
+                     f'<div class="sgist" id="{gid}"><span>{summary}</span>'
+                     f'<a href="{escape(_safe_url(i.url), quote=True)}" target="_blank" rel="noopener">'
+                     f'Open article ↗</a></div></div>')
+        cols += (f'<div class="skim-col" id="skim-{s}"><div class="skim-head">'
+                 f'<h3 title="{escape(theme["name"], quote=True)}">'
+                 f'{escape(theme.get("tab") or tab_label(theme["name"]))}</h3>'
+                 f'<span>{_plural(len(items), "story", "stories")}</span></div>{rows}</div>')
+    return (f'<section class="skim" id="skim" data-expanded="{"true" if expanded else "false"}">'
+            f'<h2 class="h">Skim if you have time<span>{_plural(n_skim, "headline", "headlines")}'
+            f' · tap one for the gist</span></h2><div class="skim-grid">{cols}</div></section>')
 
 
 def _edition_data(themes, edition_date, slot_key) -> list:
-    """What the Archive needs from this edition, one row per story."""
+    """What the Archive needs from this edition, one row per story (a cluster's
+    other sources ride along in its lead's `also`)."""
+    order, _ = triage(themes)
+    in_order = {id(i) for i in order}
     rows = []
     for theme in themes:
         for i in theme["items"]:
+            minutes = i.extra.get("minutes")
             rows.append({
                 "title": i.title, "url": _safe_url(i.url), "source": i.source,
                 "summary": (i.summary or "")[:280], "image": _image(i),
                 "date": edition_date, "slot": slot_key,
                 "p": i.extra.get("priority") or "", "why": i.extra.get("why") or "",
                 "section": theme["name"], "tab": theme.get("tab") or tab_label(theme["name"]),
+                "minutes": read_minutes(i) if id(i) in in_order else (
+                    minutes if isinstance(minutes, int) else None),
+                "cluster": i.extra.get("cluster_title") or "",
+                "also": [{"title": a.title, "url": _safe_url(a.url), "source": a.source}
+                         for a in i.extra.get("also") or []],
             })
     return rows
 
 
-def _shell(title, page_title, body, extra_css, script, nav_on) -> str:
+def _shell(title, page_title, body, extra_css, script, nav_on, top="") -> str:
+    """The page frame. `top` sits between the masthead and <main> (the
+    edition's sticky triage bar)."""
     nav = (f'<a class="{"on" if nav_on == "today" else ""}" href="index.html">Today</a>'
            f'<a class="{"on" if nav_on == "archive" else ""}" href="archive.html">Archive</a>')
     return (
@@ -409,7 +488,7 @@ def _shell(title, page_title, body, extra_css, script, nav_on) -> str:
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         f'<title>{escape(page_title)}</title>{FONTS}<style>{_BASE_CSS}{extra_css}</style></head>'
         f'<body><header class="mast"><a class="word" href="index.html">{escape(title)}</a>'
-        f'<nav class="nav">{nav}</nav></header><main>{body}</main>'
+        f'<nav class="nav">{nav}</nav></header>{top}<main>{body}</main>'
         f'<footer><span>{escape(title)} · curated by Claude</span>'
         f'<a href="{"archive.html" if nav_on == "today" else "index.html"}">'
         f'{"Browse the archive →" if nav_on == "today" else "← Today’s edition"}</a></footer>'
@@ -418,26 +497,40 @@ def _shell(title, page_title, body, extra_css, script, nav_on) -> str:
 
 
 def build_web_edition(title, themes, *, greeting="", edition_label="", date_str=None,
-                      edition_date=None, slot_key="edition", archive_link="archive.html") -> str:
-    """Render the full browsable edition as a self-contained HTML string."""
+                      edition_date=None, slot_key="edition", archive_link="archive.html",
+                      summary=None, org="", reading_images="first", skim_expanded=False) -> str:
+    """Render the full browsable edition as a self-contained HTML string.
+    `summary` comes from summary.py; `org` names the reader in the why lines;
+    `reading_images` is first|all|none (which reading-order stories get a
+    picture); `skim_expanded` opens every skim gist by default."""
     now = datetime.now(timezone.utc)
     date_str = date_str or now.strftime("%A %d %B %Y")
     edition_date = edition_date or now.strftime("%Y-%m-%d")
-    short_date = escape(datetime.strptime(edition_date, "%Y-%m-%d").strftime("%d %b").lstrip("0"))
-    items = [i for t in themes for i in t["items"]]
-    sources = len({i.source for i in items})
+    if reading_images not in READING_IMAGES:
+        reading_images = "first"
+    summary = summary or []
+    order, skim = triage(themes)
+    n_skim = sum(len(its) for _, its in skim)
+    everything = all_items(themes)
+    sources = len({i.source for i in everything})
+    labelled = any(i.extra.get("priority") in ("first", "today") for i in order)
     dateline = (f'<div class="dateline"><span><b>{escape(date_str)}</b>'
                 + (f' · {escape(edition_label)}' if edition_label else "")
-                + f'</span><span>{len(items)} stories from {sources} sources</span></div>')
+                + f'</span><span>{_plural(len(everything), "story", "stories")} from '
+                f'{_plural(sources, "source", "sources")}'
+                + (f' · {len(order)} worth reading' if labelled else "") + '</span></div>')
     greet_html = f'<div class="greeting">{escape(greeting)}</div>' if greeting else ""
-    panels = "".join(_panel(n, t, short_date) for n, t in enumerate(themes))
-    body = (f'<div class="wrap">{dateline}{greet_html}{_opening(themes, short_date)}</div>'
-            f'{_tabbar(themes)}{_filter_row(themes)}{panels}')
+    read_key = f"edge-read-{edition_date}-{slot_key}"
+    body = (f'<div class="wrap">{dateline}{greet_html}'
+            f'{_summary_section(summary, order, skim, org)}'
+            f'{_order_section(order, themes, org, reading_images, read_key)}'
+            f'{_skim_section(skim, skim_expanded)}</div>')
     data = (f'<script id="edition-data" type="application/json">'
             f'{_json_for_html(_edition_data(themes, edition_date, slot_key))}</script>')
     script = data + f"<script>{_EDITION_JS}</script>"
     page_title = f"{title} — {edition_label}" if edition_label else title
-    return _shell(title, page_title, body, _EDITION_CSS, script, "today")
+    return _shell(title, page_title, body, _EDITION_CSS, script, "today",
+                  top=_triage_bar(summary, order, n_skim))
 
 
 def save_edition(out_dir, html, date_str, slot_key) -> dict:

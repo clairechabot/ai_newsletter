@@ -83,3 +83,16 @@ def test_repo_config_loads():
     from briefing.config import load_config
     cfg = load_config("config.yaml")
     assert cfg.title and cfg.sources
+
+def test_summary_and_cover_footer_default_off(tmp_path):
+    from briefing.config import load_config
+    base = 'filter: {mode: recent}\nsources: [{type: rss, name: X, url: "http://x"}]\n'
+    p = tmp_path / "c.yaml"
+    p.write_text(base)
+    cfg = load_config(str(p))
+    assert cfg.summary == {} and cfg.email_unsubscribe == "" and cfg.email_address == ""
+    p.write_text(base + 'summary: {enabled: true}\n'
+                 'email: {unsubscribe: "mailto:u@x.com", address: "1 Road, Zurich"}\n')
+    cfg = load_config(str(p))
+    assert cfg.summary == {"enabled": True}
+    assert cfg.email_unsubscribe == "mailto:u@x.com" and cfg.email_address == "1 Road, Zurich"
