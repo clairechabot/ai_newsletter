@@ -128,6 +128,12 @@ def test_triage_orders_by_rank_and_skims_the_rest():
     plain = [{"name": "X", "items": [_item(5), _item(6)]}]
     order, skim = triage(plain)
     assert order == [plain[0]["items"][0]] and skim[0][1] == [plain[0]["items"][1]]
+    # no labels: the lead story of each of the first three sections
+    four = [{"name": f"S{n}", "items": [_item(10 * n), _item(10 * n + 1)]} for n in range(4)]
+    four.insert(1, {"name": "Empty", "items": []})
+    order, skim = triage(four)
+    assert [i.url for i in order] == ["http://x/0", "http://x/10", "http://x/20"]
+    assert [len(its) for _, its in skim] == [1, 1, 1, 2]
     d.extra["cluster_title"] = "Event"
     assert display_title(d) == "Event" and display_title(a) == a.title
     assert read_minutes(a) == 3 and read_minutes(_item(7)) == 3

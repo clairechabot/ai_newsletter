@@ -44,7 +44,8 @@ def test_cover_mode_is_short_and_links_to_edition():
     html = build_html_email("B", themes, edition_url="https://site/ed", cover=True)
     assert "Opening" in html and "Second" in html   # every headline is listed...
     assert "a summary" not in html                 # ...but no story bodies
-    assert "B short" in html                       # sections use their short label
+    order = html.split("Your reading order")[1].split("Skim if you have time")[0]
+    assert "Opening" in order and "Second" in order  # no labels: each section's lead story
     assert 'href="https://site/ed"' in html and "Open the full edition" in html
     assert 'href="https://site/ed/archive.html"' in html
 

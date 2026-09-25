@@ -17,7 +17,7 @@ render (email + optional web edition).
   in `priority.context`; themes are re-sorted by it. The same call clusters duplicate coverage
   (`same_as`): the lead keeps the others in `extra["also"]`, gets `extra["cluster_title"]` and the
   group's best tier, and `prioritize` returns the list without them. `extra["rank"]` is Claude's
-  order. With topics (`Config.topics()`: `archive.topics`, else labels from `filter.interests`) it
+  order; with no labels at all `triage` uses each of the first 3 sections' lead story. With topics (`Config.topics()`: `archive.topics`, else labels from `filter.interests`) it
   also sets `extra["topic"]` (validated, "" if none). `priority.triage(themes)` gives the renderers' (reading order, skim) split. Fails soft to
   unlabeled, unclustered items.
 - **summary** (`summary.py`): "The day in 30 seconds": one Claude call after theming, 3
