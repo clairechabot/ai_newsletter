@@ -24,11 +24,14 @@ class Config:
     voice: dict = field(default_factory=dict)       # editor persona (voice.py)
     priority: dict = field(default_factory=dict)    # reading-priority labels (priority.py)
     images: dict = field(default_factory=dict)      # preview images (images.py)
+    summary: dict = field(default_factory=dict)     # "The day in 30 seconds" (summary.py)
     web: dict = field(default_factory=dict)          # web edition + archive (web.py)
     editions: list = field(default_factory=list)     # AM/PM schedule (editions.py)
     email_mode: str = "full"                         # "full" | "cover"
     email_subject: str = "date"                      # "date" | "top_pick"
     email_from_name: str = ""                        # inbox sender name; "" = account name
+    email_unsubscribe: str = ""                      # cover footer link (URL or mailto:); "" = none
+    email_address: str = ""                          # cover footer postal line; "" = none
 
 def load_config(path: str) -> Config:
     with open(path, "r", encoding="utf-8") as fh:
@@ -63,9 +66,12 @@ def load_config(path: str) -> Config:
         voice=raw.get("voice", {}) or {},
         priority=raw.get("priority", {}) or {},
         images=raw.get("images", {}) or {},
+        summary=raw.get("summary", {}) or {},
         web=raw.get("web", {}) or {},
         editions=raw.get("editions", []) or [],
         email_mode=email_mode,
         email_subject=email_subject,
         email_from_name=str(email.get("from_name", "") or ""),
+        email_unsubscribe=str(email.get("unsubscribe", "") or ""),
+        email_address=str(email.get("address", "") or ""),
     )

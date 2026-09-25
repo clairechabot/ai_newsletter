@@ -31,14 +31,28 @@ def test_disabled_makes_no_requests():
     get.assert_not_called()
     assert "image" not in items[0].extra
 
-def test_uses_known_images_without_fetching():
+def test_known_images_are_kept_and_videos_not_fetched():
     feed = _item(0, image="https://cdn/feed.jpg")
-    vid = _item(1, thumbnail="https://i.ytimg.com/v.jpg")
-    with patch("briefing.images.http_get") as get:
+    vid = Item.make(source="S", source_type="youtube", title="V", url="https://youtube.com/watch?v=1",
+                    summary="s", published=datetime.now(timezone.utc),
+                    extra={"thumbnail": "https://i.ytimg.com/v.jpg"})
+    body = "<article>" + "word " * 500 + "</article>"
+    page = '<meta property="og:image" content="https://cdn/og.jpg">' + body
+    with patch("briefing.images.http_get", return_value=_page(page)) as get:
         add_images([feed, vid], ON)
-    get.assert_not_called()
-    assert feed.extra["image"] == "https://cdn/feed.jpg"
-    assert vid.extra["image"] == "https://i.ytimg.com/v.jpg"
+    assert [c.args[0] for c in get.call_args_list] == ["https://x.com/0"]  # for the read time only
+    assert feed.extra["image"] == "https://cdn/feed.jpg" and feed.extra["minutes"] == 3  # 500/230
+    assert vid.extra["image"] == "https://i.ytimg.com/v.jpg" and "minutes" not in vid.extra
+
+def test_read_time_counts_the_article_not_the_chrome():
+    from briefing.images import article_words, read_minutes_from_words
+    html = ("<body><nav>" + "menu " * 900 + "</nav><main><script>var a=1;</script>"
+            "<article><h1>Title here</h1>" + "word " * 458 + "<aside>" + "ad " * 300 + "</aside>"
+            "</article></main><footer>" + "legal " * 400 + "</footer></body>")
+    assert article_words(html) == 460
+    assert read_minutes_from_words(460) == 2 and read_minutes_from_words(461) == 3
+    assert read_minutes_from_words(40) is None  # a paywall stub is not the article
+    assert article_words("<body><p>" + "w " * 10 + "</p></body>") == 10
 
 def test_fetches_page_and_fails_soft_per_item():
     good, bad, pdf = _item(0), _item(1), _item(2)

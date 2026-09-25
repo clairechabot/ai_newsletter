@@ -15,13 +15,12 @@ def _themes():
 def _body(html):
     return html.split("</style>")[1]
 
-def test_build_web_edition_has_title_greeting_and_card():
+def test_build_web_edition_has_title_greeting_and_story():
     html = build_web_edition("Canopy", _themes(), greeting="Good morning.",
                              edition_label="Morning Edition", edition_date="2026-06-29")
     assert "Canopy" in html and "Good morning." in html
     assert "Theme A" in html and "Headline One" in html and "Morning Edition" in html
     assert "archive.html" in html  # footer + nav link to the archive
-    assert "29 Jun" in _body(html)  # per-card date from edition_date
 
 def test_web_edition_escapes_html():
     themes = [{"name": "A & B", "emoji": "*", "items": [_item("<script>x</script>")]}]
@@ -44,43 +43,10 @@ def test_tab_label_shortens_on_word_boundary():
     assert tab_label("Building on someone else's platform") == "Building on someone…"
     assert tab_label("Averyveryverylongsinglewordname") == "Averyveryverylongsin…"
 
-def test_tabbar_uses_short_tab_label_and_counts():
-    themes = [{"name": "Building on someone else's platform", "tab": "Platform risk", "emoji": "*",
-               "items": [_item("A", extra={"priority": "first"}), _item("B", url="http://x/2")]},
-              {"name": "Proof, not promises", "emoji": "*", "items": [_item("C", url="http://x/3")]}]
-    body = _body(build_web_edition("E", themes))
-    assert body.count('class="tab"') == 2 and body.count('class="panel"') == 2
-    assert '<span class="ix">01</span>Platform risk<span class="n">2</span><span class="pip"' in body
-    assert '<span class="ix">02</span>Proof, not promises<span class="n">1</span></button>' in body
-    assert 'title="Building on someone else&#x27;s platform"' in body  # full name on hover
-
 def test_youtube_thumbnail_rendered():
     yt = _item("Vid", st="youtube", extra={"thumbnail": "http://t/1.jpg"})
     html = build_web_edition("T", [{"name": "N", "emoji": "*", "items": [yt]}])
     assert "http://t/1.jpg" in html
-
-def test_opening_and_chips_only_when_labelled():
-    plain = _body(build_web_edition("E", _themes()))
-    assert 'class="open"' not in plain and 'class="filter-row' not in plain
-    it = _item("Hebbia raises", url="https://x/1", extra={"priority": "first", "why": "Competitor <funding>."})
-    later = _item("Other", url="https://x/2", extra={"priority": "later"})
-    body = _body(build_web_edition("E", [{"name": "T", "emoji": "X", "items": [later, it]}]))
-    assert 'class="open"' in body and "Read first <span>1</span>" in body
-    assert 'badge-first">Read first' in body and "Competitor &lt;funding&gt;." in body
-    assert "<funding>" not in body.split('<script id="edition-data"')[0]
-    assert 'data-f="first" aria-pressed="false">Read first<em>1</em>' in body
-    # decks list Read first before Later
-    deck = body.split('class="deck"')[1]
-    assert deck.index("Hebbia raises") < deck.index("Other")
-
-def test_deck_cards_carry_images_and_priority():
-    mk = lambda t, **ex: Item.make(source="S", source_type="rss", title=t, url="https://x/" + t,
-                                   summary="s", published=datetime.now(timezone.utc), extra=ex)
-    items = [mk("a", priority="first", image="https://cdn/a.jpg"), mk("b", image="https://cdn/b.jpg"), mk("c")]
-    body = _body(build_web_edition("E", [{"name": "T", "emoji": "X", "items": items}]))
-    assert 'class="dcard first" data-p="first"' in body and 'class="dcard" data-p=""' in body
-    assert body.count('src="https://cdn/a.jpg"') == 2  # opening hero card + deck card
-    assert body.count('src="https://cdn/b.jpg"') == 1 and 'referrerpolicy="no-referrer"' in body
 
 def test_save_edition_writes_index_and_dated_copy(tmp_path):
     out = str(tmp_path / "docs")
@@ -128,3 +94,100 @@ def test_palette_applied_to_web_and_archive(tmp_path):
         style = html.split("<style>")[1].split("</style>")[0]
         assert PALETTE["orange"] in style and PALETTE["cobalt"] in style
         assert "$" not in style
+
+
+def _mk(t, source="S", summary="s", **extra):
+    return Item.make(source=source, source_type="rss", title=t, url="https://x/" + t.replace(" ", "-"),
+                     summary=summary, published=datetime.now(timezone.utc), extra=extra)
+
+def _triage_themes():
+    also = [_mk("GPT-6 lands", source="OpenAI News"), _mk("Opus 5.5 recap", source="Latent Space")]
+    first = _mk("Marketplace", priority="first", rank=0, why="Rail for <vertical> AI.",
+                image="https://cdn/a.jpg", minutes=4)
+    first2 = _mk("Model Vault", priority="first", rank=1, why="Sovereign demand.", image="https://cdn/b.jpg")
+    today = _mk("Price war", priority="today", rank=2, why="Cheaper passes.", image="https://cdn/c.jpg",
+                minutes=6, also=also, cluster_title="Opus 5.5 and GPT-6 land on the same day")
+    later = [_mk(f"Skim {n}", priority="later", rank=3 + n, summary="" if n == 0 else "gist")
+             for n in range(4)]
+    return [{"name": "Anthropic Empire", "tab": "Anthropic", "emoji": "*",
+             "items": [first, today, later[0], later[1]]},
+            {"name": "Follow the Money", "tab": "Money", "emoji": "*",
+             "items": [first2, later[2], later[3]]}]
+
+SUMMARY = [{"lead": "Price war.", "text": "Frontier prices fell <40%>.", "ref": {"stories": [3]}},
+           {"lead": "Platforms close in.", "text": "Two moves.", "ref": {"stories": [1, 2]}},
+           {"lead": "Money moves.", "text": "Deals.", "ref": {"section": 1}}]
+
+def test_triage_page_has_summary_order_and_skim_but_no_decks():
+    body = _body(build_web_edition("E", _triage_themes(), summary=SUMMARY, org="Khare",
+                                   edition_date="2026-09-24", slot_key="daily"))
+    page = body.split('<script id="edition-data"')[0]
+    for gone in ('class="deck', 'class="tab"', 'class="panel"', 'class="filter-row', 'class="dcard'):
+        assert gone not in page
+    assert 'id="summary"' in page and 'id="order-0"' in page and 'id="skim-0"' in page
+    # triage bar: numbered jump links with counts, progress hidden until JS runs
+    assert '<span class="ix">01</span>Summary</a>' in page
+    assert 'href="#order-0"><span class="ix">02</span>Read first<span class="n">2</span>' in page
+    assert 'href="#order-2"><span class="ix">03</span>Read today<span class="n">1</span>' in page
+    assert 'href="#skim"><span class="ix">04</span>Skim<span class="n">4</span>' in page
+    assert '<div class="prog" hidden><span><b id="done">0</b> of 3 read</span>' in page
+    # summary: escaped takeaways, jump links from each ref
+    assert "<b>Price war.</b> Frontier prices fell &lt;40%&gt;." in page
+    assert 'href="#order-2">→ Story 3</a>' in page and 'href="#order-0">→ Stories 1 and 2</a>' in page
+    assert 'href="#skim-1">→ Skim: Money</a>' in page
+    # time budget: firsts 4+3, all 4+3+6, skim 4 x 0.5
+    assert "7 min</span><span class=\"what\">Read stories 1 and 2" in page
+    assert "The two that change what Khare does this quarter" in page
+    assert "13 min</span><span class=\"what\">All three in the reading order" in page
+    assert "+2 min</span><span class=\"what\">Skim the other 4" in page
+    # reading order: rank order across themes, cluster title and sources
+    order = page.split('id="order"')[1].split('id="skim"')[0]
+    assert order.index("Marketplace") < order.index("Model Vault") < order.index("Opus 5.5 and GPT-6")
+    assert "3 stories · ~13 min" in order
+    assert '<article class="item first" id="order-0" data-n="0">' in order
+    assert '<article class="item today" id="order-2" data-n="2">' in order
+    assert "Anthropic · 4 min" in order and "Anthropic · 6 min" in order and "Money · 3 min" in order
+    assert "· 3 sources, 1 story" in order and "Also covered by" in order and ">OpenAI News</a>" in order
+    assert "Why it matters for Khare</b>Rail for &lt;vertical&gt; AI." in order
+    # pictures: Read first only by default
+    assert 'src="https://cdn/a.jpg"' in order and 'src="https://cdn/b.jpg"' in order
+    assert "https://cdn/c.jpg" not in order and 'referrerpolicy="no-referrer"' in order
+    # skim: grouped by section, expanded without JS, fallback gist
+    skim = page.split('id="skim"')[1]
+    assert 'data-expanded="false"' in page and 'id="skim-1"' in skim
+    assert skim.count('class="srow"') == 4 and "Marketplace" not in skim and "GPT-6 lands" not in skim
+    assert "No summary in the feed; open the article for the full story." in skim
+    assert 'aria-expanded="true" aria-controls="gist-0-0"' in skim
+    assert "9 stories from 3 sources · 3 worth reading" in page  # cluster members count
+    assert "edge-read-2026-09-24-daily" in page
+
+def test_reading_images_option_and_no_summary():
+    themes = _triage_themes()
+    all_ = _body(build_web_edition("E", themes, reading_images="all"))
+    none = _body(build_web_edition("E", themes, reading_images="none", skim_expanded=True))
+    assert 'src="https://cdn/c.jpg"' in all_
+    assert 'class="item-pic"' not in none and 'data-expanded="true"' in none
+    assert 'id="summary"' not in none and "Summary</a>" not in none  # no summary: section hidden
+    assert "Why it matters</b>" in none  # no org
+
+def test_unlabelled_edition_leads_with_first_story_and_skims_the_rest():
+    body = _body(build_web_edition("E", [{"name": "T", "emoji": "*",
+                                          "items": [_mk("Lead"), _mk("Other")]}]))
+    order = body.split('id="order"')[1].split('id="skim"')[0]
+    assert "Lead" in order and "Other" not in order and "badge" not in order
+    assert "Reading order<span" in body and "worth reading" not in body
+    assert "3 min" in order  # read time falls back to 3 minutes
+
+def test_edition_data_rows_carry_minutes_and_also(tmp_path):
+    import json
+    html = build_web_edition("E", _triage_themes(), edition_date="2026-09-24", slot_key="daily")
+    rows = json.loads(html.split('<script id="edition-data" type="application/json">')[1]
+                      .split("</script>")[0])
+    by_title = {r["title"]: r for r in rows}
+    assert len(rows) == 7  # cluster members ride along in their lead's "also"
+    assert by_title["Price war"]["minutes"] == 6 and by_title["Model Vault"]["minutes"] == 3
+    assert by_title["Skim 1"]["minutes"] is None
+    assert [a["source"] for a in by_title["Price war"]["also"]] == ["OpenAI News", "Latent Space"]
+    assert by_title["Price war"]["cluster"].startswith("Opus 5.5")
+    save_edition(str(tmp_path), html, "2026-09-24", "daily")
+    assert "Price war" in build_archive_index(str(tmp_path))

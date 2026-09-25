@@ -61,7 +61,7 @@ sources:
   # Tech Policy Press (feed times out). claude_fetch can cover one if you need it.
 
 email:
-  mode: cover              # short email (Read first cards, Read today rows, headlines) + link to the web edition
+  mode: cover              # triage email: day in 30 seconds, reading order, skim headlines + link to the web edition
   from_name: "The Edge"    # sender name shown in Gmail
 
 # Reading priority: labels every item "Read first", "Read today" or "Later"
@@ -95,6 +95,9 @@ priority:
     deployment; AI regulation touching finance (EU AI Act, FCA, FINMA); Swiss and
     European startup funding programmes.
     Not relevant: LP and quarterly reporting tools, consumer AI, crypto trading.
+
+# "The day in 30 seconds": three takeaways at the top of the email and web edition.
+summary: { enabled: true }
 
 # Preview images: each story's og:image (what link previews show), hotlinked.
 images: { enabled: true }

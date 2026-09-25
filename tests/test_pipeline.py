@@ -90,3 +90,36 @@ def test_run_adds_images_to_selected_items(tmp_path):
          patch("briefing.pipeline.send_email"), patch("briefing.pipeline.save_history"):
         run(cfg, history_path=str(tmp_path / "h.json"))
     assert [i.id for i in imgs.call_args[0][0]] == ["a"] and imgs.call_args[0][1] == {"enabled": True}
+
+def test_run_folds_clusters_summarizes_and_sends_cover(tmp_path):
+    cfg = Config(title="B", filter_mode="recent", interests=[], max_items=5,
+                 per_source_cap=2, recency_hours=24,
+                 sources=[{"type": "rss", "name": "S", "url": "http://x"}],
+                 priority={"enabled": True, "context": "x", "org": "Khare"},
+                 summary={"enabled": True}, email_mode="cover",
+                 web={"enabled": True, "output_dir": str(tmp_path / "docs"),
+                      "edition_url": "https://site/"})
+    def label(items, pcfg):
+        a, b = sorted(items, key=lambda i: i.id)
+        a.extra.update(priority="first", why="w", also=[b])
+        return [a]  # b folded into a
+    seen = {}
+    def grouped(items, voice=None):
+        seen["themed"] = [i.id for i in items]
+        return [{"name": "T", "emoji": "X", "items": list(items)}]
+    summary = [{"lead": "Big day.", "text": "Something happened.", "ref": {"stories": [1]}}]
+    sent = {}
+    with patch("briefing.pipeline.fetch_all", return_value=[_item("a"), _item("b")]), \
+         patch("briefing.pipeline.load_history", return_value={"seen_ids": []}), \
+         patch("briefing.pipeline.prioritize", side_effect=label), \
+         patch("briefing.pipeline.group_into_themes", side_effect=grouped), \
+         patch("briefing.pipeline.summarize", return_value=summary) as summ, \
+         patch("briefing.pipeline.send_email",
+               side_effect=lambda title, html, **kw: sent.update(html=html)), \
+         patch("briefing.pipeline.save_history") as save:
+        run(cfg, history_path=str(tmp_path / "h.json"))
+    assert seen["themed"] == ["a"] and summ.call_args[0][1] == {"enabled": True}
+    assert "<b>Big day.</b> Something happened." in sent["html"]
+    assert "For Khare:" in sent["html"] and "Big day: Something happened." in sent["html"]
+    assert "Big day." in (tmp_path / "docs" / "index.html").read_text()
+    assert set(save.call_args[0][1]["seen_ids"]) >= {"a", "b"}  # the folded duplicate is seen too

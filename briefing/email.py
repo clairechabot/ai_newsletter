@@ -6,8 +6,12 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from html import escape
-from briefing.theme import css
-from briefing.priority import LABELS, reading_list
+from briefing.theme import css, PALETTE
+from briefing.priority import (LABELS, reading_list, triage, all_items, read_minutes,
+                               display_title)
+
+SKIM_MAX = 3         # headlines per section in the cover email; the rest are on the web
+PREHEADER_MAX = 140  # characters of inbox preview
 
 _CSS = css(
     "body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:$paper;"
@@ -52,31 +56,6 @@ _CSS = css(
     ".reading li::marker{color:$orange;font-weight:700}"
     ".reading a{color:$ink;font-weight:700;text-decoration:none}"
     ".reading .why{margin:2px 0 0;color:$muted}"
-    # Cover mode (email.mode: cover): short email that links to the web edition.
-    ".e-counts{color:#CFCFCF;font-size:12px;line-height:1.6;text-align:right}"
-    ".e-counts b{color:$white}"
-    ".e-label{display:block;font-size:11px;font-weight:700;letter-spacing:1.4px;"
-    "text-transform:uppercase;color:$black;border-bottom:2px solid $black;"
-    "padding-bottom:6px;margin:22px 0 12px}"
-    ".e-label span{float:right;color:$muted;letter-spacing:.5px;font-weight:400}"
-    ".e-card{margin:0 0 20px}"
-    ".e-card img.hero{display:block;width:100%;height:auto;border-radius:4px;margin:0 0 10px}"
-    ".e-meta{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:$cobalt;"
-    "font-weight:700;margin:0 0 4px}"
-    ".e-title{font-size:18px;line-height:1.3;font-weight:700;color:$ink;text-decoration:none}"
-    ".e-row .e-title{font-size:15px}"
-    ".e-why{font-size:14px;line-height:1.45;color:$ink;margin:6px 0 0}"
-    ".e-row{border-top:1px solid $rule;padding:12px 0}"
-    ".e-row td.thumb{padding-right:12px;width:84px}"
-    ".e-row td.thumb img{display:block;width:84px;height:63px;object-fit:cover;border-radius:3px}"
-    ".e-also h5{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:$cobalt;"
-    "margin:16px 0 4px}"
-    ".e-also ul{margin:0;padding-left:16px}.e-also li{font-size:14px;line-height:1.4;margin:5px 0}"
-    ".e-also li a{color:$ink;text-decoration:none}.e-also li span{color:$muted;font-size:12px}"
-    ".e-cta{display:block;text-align:center;background:$orange;color:$black;font-size:15px;"
-    "font-weight:700;padding:14px;border-radius:4px;margin:24px 0 8px;text-decoration:none}"
-    ".e-foot{font-size:12px;color:$muted;line-height:1.6;margin-top:16px}"
-    ".e-foot a{color:$cobalt}"
 )
 
 def _safe_url(url) -> str:
@@ -84,6 +63,11 @@ def _safe_url(url) -> str:
     (e.g. javascript:, data:) to prevent script-URI injection."""
     url = (url or "").strip()
     return url if url.startswith(("http://", "https://")) else ""
+
+def _safe_link(url) -> str:
+    """Like _safe_url, but also allows mailto: (for an unsubscribe link)."""
+    url = (url or "").strip()
+    return url if url.startswith(("http://", "https://", "mailto:")) else ""
 
 def _badge(item) -> str:
     tier = item.extra.get("priority")
@@ -115,7 +99,7 @@ def _card(item) -> str:
     first = " card-first" if item.extra.get("priority") == "first" else ""
     text = (f'<div class="src">{_badge(item)}{escape(item.source)}</div>'
             f'<a href="{href}">{escape(item.title)}</a>{_why(item)}'
-            f'<p>{escape(item.summary)}</p>')
+            f'<p>{escape(item.summary)}</p>{_also_line(item)}')
     if img and (first or item.source_type == "youtube"):
         # The big picture goes to what to read first (and videos) only.
         return (f'<div class="card{first}"><a href="{href}"><img class="hero" src="{img}" '
@@ -129,81 +113,230 @@ def _card(item) -> str:
                 f'<td valign="top">{text}</td></tr></table></div>')
     return f'<div class="card{first}">{text}</div>'
 
-def _split_by_priority(themes) -> tuple:
-    """(read first, read today, [(section name, remaining items)]). Without
-    any labels the lead story stands in for Read first."""
-    items = [i for t in themes for i in t["items"]]
-    firsts = [i for i in items if i.extra.get("priority") == "first"]
-    todays = [i for i in items if i.extra.get("priority") == "today"]
-    if not firsts and not todays and items:
-        firsts = [items[0]]
-    shown = {id(i) for i in firsts + todays}
-    rest = [(t.get("tab") or t["name"], [i for i in t["items"] if id(i) not in shown])
-            for t in themes]
-    return firsts, todays, [(name, its) for name, its in rest if its]
-
-def _e_card(item) -> str:
-    href = escape(_safe_url(item.url), quote=True)
-    img = escape(_image_url(item), quote=True)
-    pic = f'<a href="{href}"><img class="hero" src="{img}" alt="" width="100%"></a>' if img else ""
-    return (f'<div class="e-card">{pic}<div class="e-meta">{_badge(item)}{escape(item.source)}</div>'
-            f'<a class="e-title" href="{href}">{escape(item.title)}</a>{_e_why(item, True)}</div>')
-
-def _e_why(item, label=False) -> str:
-    why = item.extra.get("why")
-    if not why:
+def _also_line(item) -> str:
+    """'Also covered by' links for a cluster lead (full mode)."""
+    also = item.extra.get("also") or []
+    if not also:
         return ""
-    return f'<p class="e-why">{"<b>Why it matters:</b> " if label else ""}{escape(why)}</p>'
+    links = " · ".join(f'<a href="{escape(_safe_url(a.url), quote=True)}">{escape(a.source)}</a>'
+                       for a in also)
+    return f'<p class="why">Also covered by {links}</p>'
 
-def _e_row(item) -> str:
-    href = escape(_safe_url(item.url), quote=True)
-    img = escape(_image_url(item), quote=True)
-    text = (f'<div class="e-meta">{_badge(item)}{escape(item.source)}</div>'
-            f'<a class="e-title" href="{href}">{escape(item.title)}</a>{_e_why(item)}')
-    thumb = (f'<td class="thumb" valign="top"><a href="{href}"><img src="{img}" alt="" width="84"></a></td>'
-             if img else "")
-    return (f'<table class="e-row" role="presentation" width="100%" cellpadding="0" cellspacing="0">'
-            f'<tr>{thumb}<td valign="top">{text}</td></tr></table>')
+# ── Cover mode (email.mode: cover) ────────────────────────────────────────────
+# A triage-first email: the day in 30 seconds, one numbered reading order with
+# read times, then a short skim list per section and a button to the web
+# edition. Tables and inline styles only, so Gmail and Outlook render it.
 
-def _cover_body(themes, edition_url) -> str:
-    """Short 'cover' email: Read first as image cards, Read today as thumbnail
-    rows, everything else as one headline per line grouped by section, and a
-    button to the full web edition. Used when email.mode == cover."""
-    firsts, todays, rest = _split_by_priority(themes)
-    n_rest = sum(len(its) for _, its in rest)
+_F = "font-family:Arial,Helvetica,sans-serif;"
+_LH = "mso-line-height-rule:exactly;"
+_T = 'role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"'
+_P = PALETTE
+_ON_BLACK = "#CFCFCF"  # secondary text on the black masthead
+
+def _href(url) -> str:
+    return escape(_safe_url(url), quote=True)
+
+def _plural(n, one, many) -> str:
+    return f"{n} {one if n == 1 else many}"
+
+def _section_label(left, right) -> str:
+    return (f'<tr><td style="padding:28px 0 10px 0;border-bottom:2px solid {_P["black"]};">'
+            f'<table {_T}><tr><td style="{_F}font-size:12px;font-weight:bold;letter-spacing:1.5px;'
+            f'text-transform:uppercase;color:{_P["black"]};">{left}</td>'
+            f'<td align="right" style="{_F}font-size:12px;color:{_P["muted"]};">{right}</td>'
+            f'</tr></table></td></tr>')
+
+def _cover_masthead(title, date_label, order, n_skim, n_sources) -> str:
+    shape = []
+    if order:
+        minutes = sum(read_minutes(i) for i in order)
+        shape.append(f'<b style="color:{_P["white"]};">{len(order)} to read</b> (~{minutes} min)')
+    if n_skim:
+        shape.append(f'<b style="color:{_P["white"]};">{n_skim}</b> to skim')
+    shape.append(_plural(n_sources, "source", "sources"))
+    return (f'<tr><td bgcolor="{_P["black"]}" style="background:{_P["black"]};'
+            f'border-bottom:4px solid {_P["orange"]};padding:20px 22px;"><table {_T}><tr>'
+            f'<td valign="bottom" style="{_F}font-size:28px;font-weight:bold;color:{_P["white"]};'
+            f'letter-spacing:.5px;line-height:32px;{_LH}">{escape(title)}</td>'
+            f'<td valign="bottom" align="right" style="{_F}font-size:12px;color:{_P["orange"]};'
+            f'letter-spacing:1.5px;text-transform:uppercase;line-height:18px;{_LH}">'
+            f'{escape(date_label)}</td></tr>'
+            f'<tr><td colspan="2" style="padding-top:10px;{_F}font-size:13px;color:{_ON_BLACK};'
+            f'line-height:18px;{_LH}">{" &middot; ".join(shape)}</td></tr></table></td></tr>')
+
+def _cover_summary(summary) -> str:
+    if not summary:
+        return ""
+    rows = ""
+    for n, s in enumerate(summary):
+        pad = "8px 22px 20px 22px" if n == len(summary) - 1 else "8px 22px 8px 22px"
+        rows += (f'<tr><td style="padding:{pad};"><table {_T}><tr>'
+                 f'<td width="22" valign="top" style="{_F}font-size:15px;font-weight:bold;'
+                 f'color:{_P["orange"]};line-height:22px;{_LH}">&#9632;</td>'
+                 f'<td valign="top" style="{_F}font-size:15px;color:{_P["ink"]};line-height:22px;{_LH}">'
+                 f'<b>{escape(s["lead"])}</b> {escape(s["text"])}</td></tr></table></td></tr>')
+    return (f'<tr><td style="padding:24px 0 0 0;"><table {_T} style="background:{_P["white"]};'
+            f'border:1px solid {_P["rule"]};"><tr><td style="padding:20px 22px 8px 22px;{_F}'
+            f'font-size:12px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;'
+            f'color:{_P["black"]};">The day in 30 seconds</td></tr>{rows}</table></td></tr>')
+
+def _cover_badge(tier) -> str:
+    base = (f"{_F}font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;"
+            "border-radius:2px;")
+    if tier == "first":
+        return (f'<span style="background:{_P["orange"]};color:{_P["black"]};{base}padding:2px 6px;">'
+                f'{LABELS["first"]}</span> ')
+    if tier == "today":
+        return (f'<span style="color:{_P["cobalt"]};border:1px solid {_P["cobalt"]};{base}'
+                f'padding:1px 6px;">{LABELS["today"]}</span> ')
+    return ""
+
+def _order_row(n, item, org) -> str:
+    tier = item.extra.get("priority")
+    href = _href(item.url)
+    num_color = _P["cobalt"] if tier == "today" else _P["orange"]
+    big = n < 2
+    title = escape(display_title(item))
+    img = _image_url(item) if n == 0 else ""
+    pic = (f'<tr><td colspan="2" style="padding:0 0 14px 0;"><a href="{href}">'
+           f'<img src="{escape(img, quote=True)}" width="556" alt="{escape(display_title(item), quote=True)}" '
+           f'style="display:block;width:100%;max-width:556px;height:auto;border:0;"></a></td></tr>'
+           if img else "")
+    why = item.extra.get("why")
+    why_html = (f'<div style="{_F}font-size:14px;color:{_P["ink"]};line-height:20px;{_LH}'
+                f'padding-top:6px;"><b style="color:{_P["cobalt"]};">'
+                f'{escape(f"For {org}:" if org else "Why it matters:")}</b> {escape(why)}</div>'
+                if why else "")
+    also = item.extra.get("also") or []
+    also_html = (f'<div style="{_F}font-size:13px;color:{_P["muted"]};line-height:19px;{_LH}'
+                 f'padding-top:8px;">Also covered by ' + " &middot; ".join(
+                     f'<a href="{_href(a.url)}" style="color:{_P["cobalt"]};text-decoration:underline;">'
+                     f'{escape(a.source)}</a>' for a in also) + "</div>" if also else "")
+    return (f'<tr><td style="padding:18px 0;border-bottom:1px solid {_P["rule"]};"><table {_T}>{pic}<tr>'
+            f'<td width="44" valign="top" style="{_F}font-size:30px;font-weight:bold;color:{num_color};'
+            f'line-height:30px;{_LH}">{n + 1}</td><td valign="top">'
+            f'<div style="padding-bottom:6px;">{_cover_badge(tier)}<span style="{_F}font-size:11px;'
+            f'letter-spacing:.8px;text-transform:uppercase;color:{_P["muted"]};">'
+            f'{"&nbsp;" if tier in ("first", "today") else ""}{escape(item.source)} &middot; '
+            f'{read_minutes(item)} min</span></div>'
+            f'<a href="{href}" style="{_F}font-size:{19 if big else 17}px;font-weight:bold;'
+            f'color:{_P["ink"]};text-decoration:none;line-height:{25 if big else 23}px;{_LH}">{title}</a>'
+            f'{why_html}{also_html}</td></tr></table></td></tr>')
+
+def _cover_skim(skim, edition_url) -> str:
+    link = _safe_url(edition_url).split("#")[0]
     out = ""
-    if firsts:
-        out += (f'<span class="e-label">Read first <span>{len(firsts)} '
-                f'{"story" if len(firsts) == 1 else "stories"}</span></span>'
-                + "".join(_e_card(i) for i in firsts))
-    if todays:
-        out += (f'<span class="e-label">Read today <span>{len(todays)} '
-                f'{"story" if len(todays) == 1 else "stories"}</span></span>'
-                + "".join(_e_row(i) for i in todays))
-    if rest:
-        lists = "".join(
-            f'<h5>{escape(name)}</h5><ul>' + "".join(
-                f'<li><a href="{escape(_safe_url(i.url), quote=True)}">{escape(i.title)}</a> '
-                f'<span>{escape(i.source)}</span></li>' for i in its) + "</ul>"
-            for name, its in rest)
-        out += (f'<span class="e-label">Also in today\'s edition <span>{n_rest} '
-                f'{"headline" if n_rest == 1 else "headlines"}</span></span>'
-                f'<div class="e-also">{lists}</div>')
-    link = _safe_url(edition_url)
-    if link:
-        out += f'<a class="e-cta" href="{escape(link, quote=True)}">Open the full edition →</a>'
+    for n, (theme, items) in enumerate(skim):
+        name = theme.get("tab") or theme["name"]
+        # Three headlines per section when the web edition holds the rest.
+        shown = items[:SKIM_MAX] if link else items
+        out += (f'<tr><td style="padding:16px 0 4px 0;{_F}font-size:11px;font-weight:bold;'
+                f'letter-spacing:1px;text-transform:uppercase;color:{_P["cobalt"]};">{escape(name)} '
+                f'<span style="color:{_P["muted"]};font-weight:normal;">&middot; {len(items)}</span>'
+                f'</td></tr>')
+        out += "".join(
+            f'<tr><td style="padding:6px 0;{_F}font-size:14px;line-height:20px;{_LH}">'
+            f'<a href="{_href(i.url)}" style="color:{_P["ink"]};text-decoration:none;">{escape(i.title)}</a> '
+            f'<span style="color:{_P["muted"]};font-size:12px;">{escape(i.source)}</span></td></tr>'
+            for i in shown)
+        if len(items) > len(shown):
+            out += (f'<tr><td style="padding:2px 0 4px 0;{_F}font-size:13px;">'
+                    f'<a href="{escape(f"{link}#skim-{n}", quote=True)}" style="color:{_P["cobalt"]};'
+                    f'text-decoration:underline;">{len(items) - len(shown)} more in {escape(name)} '
+                    f'&rarr;</a></td></tr>')
     return out
 
-def cover_preheader(themes, greeting="") -> str:
-    """Inbox preview line for a cover email: the day's shape, then the lead titles."""
-    items = [i for t in themes for i in t["items"]]
-    firsts = [i for i in items if i.extra.get("priority") == "first"]
-    todays = [i for i in items if i.extra.get("priority") == "today"]
-    if not firsts and not todays:
+def _cover_footer(title, n_sources, org, link, unsubscribe, address) -> str:
+    line = f"{escape(title)} is curated by Claude from {_plural(n_sources, 'source', 'sources')}"
+    line += f" for the team at {escape(org)}." if org else "."
+    a = f'style="color:{_P["cobalt"]};"'
+    links = []
+    if link:
+        links.append(f'<a href="{escape(link, quote=True)}" {a}>Read on the web</a>')
+        links.append(f'<a href="{escape(link.rstrip("/") + "/archive.html", quote=True)}" {a}>'
+                     f'Search the archive</a>')
+    unsub = _safe_link(unsubscribe)
+    if unsub:
+        links.append(f'<a href="{escape(unsub, quote=True)}" {a}>Unsubscribe</a>')
+    lines = [line] + ([" &middot; ".join(links)] if links else []) + (
+        [escape(address)] if address else [])
+    return (f'<tr><td style="padding:16px 0 0 0;{_F}font-size:12px;color:{_P["muted"]};'
+            f'line-height:19px;{_LH}">{"<br>".join(lines)}</td></tr>')
+
+def _cover_email(title, themes, *, greeting, edition_url, preheader, summary, org, now,
+                 unsubscribe, address) -> str:
+    order, skim = triage(themes)
+    n_skim = sum(len(its) for _, its in skim)
+    n_sources = len({i.source for i in all_items(themes)})
+    date_label = now.strftime("%A, %d %b").replace(" 0", " ")
+    link = _safe_url(edition_url)
+    body = _cover_summary(summary)
+    if greeting:
+        body += (f'<tr><td style="padding:20px 0 0 0;{_F}font-size:14px;font-style:italic;'
+                 f'color:{_P["ink"]};line-height:21px;{_LH}">{escape(greeting)}</td></tr>')
+    if order:
+        minutes = sum(read_minutes(i) for i in order)
+        body += _section_label("Your reading order",
+                               f'{_plural(len(order), "story", "stories")} &middot; ~{minutes} min')
+        body += "".join(_order_row(n, i, org) for n, i in enumerate(order))
+    if skim:
+        body += _section_label("Skim if you have time", _plural(n_skim, "headline", "headlines"))
+        body += _cover_skim(skim, link)
+    if link:
+        body += (f'<tr><td style="padding:28px 0 8px 0;"><table {_T}><tr><td align="center" '
+                 f'bgcolor="{_P["orange"]}" style="background:{_P["orange"]};border-radius:4px;">'
+                 f'<a href="{escape(link, quote=True)}" style="display:block;padding:14px 18px;{_F}'
+                 f'font-size:15px;font-weight:bold;color:{_P["black"]};text-decoration:none;">'
+                 f'Open the full edition &rarr;</a></td></tr></table></td></tr>')
+    body += _cover_footer(title, n_sources, org, link, unsubscribe, address)
+    return (
+        '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<meta name="color-scheme" content="light dark">'
+        '<meta name="supported-color-schemes" content="light dark">'
+        f'<title>{escape(title)}</title>'
+        '<!--[if mso]><style>table,td{font-family:Arial,Helvetica,sans-serif!important}</style><![endif]-->'
+        '<style>@media (max-width:620px){.px{padding-left:16px!important;padding-right:16px!important}}</style>'
+        f'</head><body style="margin:0;padding:0;background:{_P["paper"]};">{_preheader(preheader)}'
+        f'<table {_T} bgcolor="{_P["paper"]}" style="background:{_P["paper"]};"><tr>'
+        '<td align="center" style="padding:24px 12px;">'
+        '<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->'
+        f'<table {_T} style="max-width:600px;">'
+        f'{_cover_masthead(title, date_label, order, n_skim, n_sources)}'
+        f'<tr><td class="px" style="padding:0 22px 28px 22px;background:{_P["paper"]};">'
+        f'<table {_T}>{body}</table></td></tr></table>'
+        '<!--[if mso]></td></tr></table><![endif]--></td></tr></table></body></html>')
+
+def _trim(text, limit) -> str:
+    text = " ".join((text or "").split())
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0].rstrip(",;:-–—")
+
+def cover_preheader(themes, greeting="", summary=None) -> str:
+    """Inbox preview line for a cover email: the first takeaway, then the
+    day's shape, e.g. "Price war: Opus 5.5 and GPT-6 cut prices 40–50%. 2 to
+    read first, 2 today (~15 min), 18 to skim." """
+    order, skim = triage(themes)
+    firsts = sum(1 for i in order if i.extra.get("priority") == "first")
+    todays = sum(1 for i in order if i.extra.get("priority") == "today")
+    if not firsts and not todays and not summary:
+        items = [i for t in themes for i in t["items"]]
         return greeting or (items[0].title if items else "")
-    rest = len(items) - len(firsts) - len(todays)
-    shape = f"{len(firsts)} to read first · {len(todays)} today · {rest} more."
-    return shape + (" " + " · ".join(i.title for i in firsts) if firsts else "")
+    n_skim = sum(len(its) for _, its in skim)
+    minutes = sum(read_minutes(i) for i in order)
+    shape = (f"{firsts} to read first, {todays} today (~{minutes} min), {n_skim} to skim."
+             if firsts or todays else
+             f"{len(order)} to read (~{minutes} min), {n_skim} to skim.")
+    if not summary:
+        return shape
+    lead = summary[0]["lead"].rstrip(".!?") + ":"
+    room = max(PREHEADER_MAX - len(shape) - len(lead) - 3, 0)
+    point = " ".join((summary[0].get("short") or summary[0]["text"]).split()).rstrip(".!?")
+    if len(point) > room:
+        point = _trim(point, room - 1).rstrip(".!?") + "…"
+        return f"{lead} {point} {shape}" if point != "…" else shape
+    return f"{lead} {point}. {shape}" if point else shape
 
 def _preheader(text) -> str:
     """Hidden inbox-preview line (the grey snippet after the subject). Padded
@@ -212,43 +345,31 @@ def _preheader(text) -> str:
         return ""
     pad = "&#8203;&nbsp;" * 60
     return ('<div style="display:none;max-height:0;overflow:hidden;opacity:0;'
-            f'mso-hide:all">{escape(text[:140])}{pad}</div>')
+            f'mso-hide:all">{escape(text[:PREHEADER_MAX])}{pad}</div>')
 
 def build_html_email(title, themes, *, greeting="", edition_url="", cover=False,
-                     preheader="") -> str:
-    now = datetime.now(timezone.utc).strftime("%A, %B %d")
+                     preheader="", summary=None, org="", now=None, unsubscribe="",
+                     address="") -> str:
+    """The email. `cover=True` builds the short triage cover (see above);
+    `summary` (summary.py), `org` (priority.org, for "For <org>:"), and the
+    footer's `unsubscribe` link and postal `address` apply to the cover only."""
+    now = now or datetime.now(timezone.utc)
+    if cover:
+        return _cover_email(title, themes, greeting=greeting, edition_url=edition_url,
+                            preheader=preheader, summary=summary or [], org=org, now=now,
+                            unsubscribe=unsubscribe, address=address)
     greet_html = f'<div class="greeting">{escape(greeting)}</div>' if greeting else ""
-    if cover:
-        body = _cover_body(themes, edition_url)
-    else:
-        body = ""
-        for theme in themes:
-            cards = "".join(_card(i) for i in theme["items"])
-            body += (f'<p class="theme-title">{escape(theme.get("emoji", ""))} '
-                     f'{escape(theme["name"])}</p>{cards}')
-    counts = ""
-    reading = _reading_list(themes)
-    footer = '<div class="footer">Curated by Claude</div>'
-    if cover:
-        reading = ""  # the cover's Read first block replaces the list
-        items = [i for t in themes for i in t["items"]]
-        f = sum(1 for i in items if i.extra.get("priority") == "first")
-        t = sum(1 for i in items if i.extra.get("priority") == "today")
-        if f or t:
-            counts = (f'<td class="e-counts" valign="bottom"><b>{f}</b> to read first<br>'
-                      f'<b>{t}</b> for today · <b>{len(items) - f - t}</b> more</td>')
-        link = _safe_url(edition_url)
-        sources = len({i.source for i in items})
-        footer = (f'<div class="e-foot">{escape(title)} is curated by Claude from {sources} sources.'
-                  + (f'<br><a href="{escape(link, quote=True)}">Read on the web</a> · '
-                     f'<a href="{escape(link.rstrip("/") + "/archive.html", quote=True)}">'
-                     f'Search the archive</a>' if link else "") + '</div>')
-    header = (f'<div class="header"><table role="presentation" width="100%" cellpadding="0" '
-              f'cellspacing="0"><tr><td valign="bottom"><h1>{escape(title)}</h1>'
-              f'<div class="date">{now}</div></td>{counts}</tr></table></div>')
+    body = ""
+    for theme in themes:
+        cards = "".join(_card(i) for i in theme["items"])
+        body += (f'<p class="theme-title">{escape(theme.get("emoji", ""))} '
+                 f'{escape(theme["name"])}</p>{cards}')
+    header = (f'<div class="header"><h1>{escape(title)}</h1>'
+              f'<div class="date">{now.strftime("%A, %B %d")}</div></div>')
     return (f'<!DOCTYPE html><html><head><meta charset="utf-8">'
             f'<style>{_CSS}</style></head><body>{_preheader(preheader)}<div class="wrapper">'
-            f'{header}{greet_html}{reading}{body}{footer}</div></body></html>')
+            f'{header}{greet_html}{_reading_list(themes)}{body}'
+            f'<div class="footer">Curated by Claude</div></div></body></html>')
 
 def _recipients() -> list:
     """Recipients from EMAIL_RECIPIENT / EMAIL_RECIPIENTS / RECIPIENTS
@@ -264,9 +385,9 @@ def top_pick_subject(title, themes, limit=60) -> str:
     Falls back to the plain title when there are no items."""
     must = reading_list(themes)
     first = must[0] if must else next((t["items"][0] for t in themes if t.get("items")), None)
-    if not first or not first.title.strip():
+    if not first or not display_title(first).strip():
         return title
-    lead = " ".join(first.title.split())
+    lead = " ".join(display_title(first).split())
     if len(lead) > limit:
         lead = lead[:limit].rsplit(" ", 1)[0].rstrip(",;:-") + "…"
     return f"{title} | {lead}"

@@ -74,3 +74,60 @@ def test_order_themes_and_reading_list():
     assert themes[0]["items"] == [b, c, a, d]  # unlabeled sorts last
     assert reading_list(themes) == [b]
     assert rank(d) > rank(a)
+
+def _run_kept(items, payload, cfg=CFG):
+    with patch("briefing.priority._client", return_value=_client(payload)):
+        return prioritize(items, cfg)
+
+def test_same_as_folds_duplicates_into_the_lead():
+    items = [_item(n) for n in range(5)]
+    items[1].extra["minutes"] = 5
+    kept = _run_kept(items, {"items": [
+        {"i": 3, "p": "first", "why": "Competitor."},
+        {"i": 1, "p": "today", "why": "Prices fall for us.", "cluster_title": "Two labs ship on one day"},
+        {"i": 2, "p": "first", "same_as": 1},          # duplicate ranked higher: lead inherits "first"
+        {"i": 4, "p": "later", "same_as": 2},          # chain resolves to the lead
+        {"i": 0, "p": "later"}]})
+    assert kept == [items[0], items[1], items[3]]
+    lead = items[1]
+    assert lead.extra["also"] == [items[2], items[4]]
+    assert lead.extra["priority"] == "first" and lead.extra["cluster_title"] == "Two labs ship on one day"
+    assert lead.extra["why"] == "Prices fall for us." and lead.extra["minutes"] == 6  # 5 + 1
+    # the group ranks where its highest member sat
+    assert [items[3].extra["rank"], lead.extra["rank"], items[0].extra["rank"]] == [0, 1, 2]
+
+def test_bad_same_as_is_ignored():
+    items = [_item(n) for n in range(3)]
+    kept = _run_kept(items, {"items": [
+        {"i": 0, "p": "today", "same_as": 1}, {"i": 1, "p": "later", "same_as": 0},  # cycle
+        {"i": 2, "p": "later", "same_as": 2}]})                                        # self
+    assert kept == items and not any("also" in i.extra for i in items)
+    assert _run_kept([_item(9)], {"items": [{"i": 0, "p": "first", "same_as": 7}]})[0].extra["priority"] == "first"
+
+def test_cluster_counts_once_toward_first_cap():
+    items = [_item(n) for n in range(4)]
+    kept = _run_kept(items, {"items": [
+        {"i": 0, "p": "first"}, {"i": 1, "p": "first", "same_as": 0},
+        {"i": 2, "p": "first"}, {"i": 3, "p": "first"}]})
+    assert [i.extra["priority"] for i in kept] == ["first", "first", "today"]  # cap of 2
+    assert items[0].extra["minutes"] == 4  # unmeasured 3 + 1 for the cluster
+
+def test_failure_returns_items_unclustered():
+    items = [_item(0), _item(1)]
+    with patch("briefing.priority._client", return_value=_client("nope")):
+        assert prioritize(items, CFG) == items
+
+def test_triage_orders_by_rank_and_skims_the_rest():
+    from briefing.priority import triage, display_title, read_minutes
+    a, b, c, d = (_item(n) for n in range(4))
+    a.extra.update(priority="today", rank=2); b.extra.update(priority="first", rank=1)
+    c.extra.update(priority="later", rank=3); d.extra.update(priority="first", rank=0)
+    t1, t2 = {"name": "One", "items": [a, c]}, {"name": "Two", "items": [b, d]}
+    order, skim = triage([t1, t2])
+    assert order == [d, b, a] and skim == [(t1, [c])]
+    plain = [{"name": "X", "items": [_item(5), _item(6)]}]
+    order, skim = triage(plain)
+    assert order == [plain[0]["items"][0]] and skim[0][1] == [plain[0]["items"][1]]
+    d.extra["cluster_title"] = "Event"
+    assert display_title(d) == "Event" and display_title(a) == a.title
+    assert read_minutes(a) == 3 and read_minutes(_item(7)) == 3
