@@ -1,11 +1,13 @@
 from __future__ import annotations
 import os
+import re
 import smtplib
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from html import escape
+from urllib.parse import quote
 from briefing.theme import css, PALETTE
 from briefing.priority import (LABELS, reading_list, triage, all_items, read_minutes,
                                display_title)
@@ -211,7 +213,31 @@ def _cover_badge(tier) -> str:
                 f'padding:1px 6px;">{LABELS["today"]}</span> ')
     return ""
 
-def _order_row(n, item, org) -> str:
+def feedback_address(value) -> str:
+    """Where the cover's "Useful / Not for us" links send a vote: `sender`
+    means the sending account (EMAIL_SENDER), else a plain email address."""
+    value = (value or "").strip()
+    if value.lower() == "sender":
+        value = (os.environ.get("EMAIL_SENDER") or "").strip()
+    return value if re.fullmatch(r"[^@\s<>\"']+@[^@\s<>\"']+\.[^@\s<>\"']+", value) else ""
+
+def _feedback(item, to) -> str:
+    """Two mailto: links under a reading-order story. Each opens a ready-made
+    email whose subject names the vote and the story, for tuning the priority
+    profile. Nothing is tracked; a reply is the whole mechanism."""
+    if not to:
+        return ""
+    def link(label, verdict):
+        subject = quote(f"{verdict}: {display_title(item)}"[:150])
+        body = quote(f"{display_title(item)}\n{_safe_url(item.url)}")
+        href = f"mailto:{to}?subject={subject}&body={body}"
+        return (f'<a href="{escape(href, quote=True)}" style="color:{_P["cobalt"]};'
+                f'text-decoration:underline;">{label}</a>')
+    return (f'<div style="{_F}font-size:12px;color:{_P["muted"]};line-height:18px;{_LH}'
+            f'padding-top:8px;">Worth it? {link("Useful", "Useful")} &middot; '
+            f'{link("Not for us", "Not for us")}</div>')
+
+def _order_row(n, item, org, feedback_to="") -> str:
     tier = item.extra.get("priority")
     href = _href(item.url)
     num_color = _P["cobalt"] if tier == "today" else _P["orange"]
@@ -241,7 +267,7 @@ def _order_row(n, item, org) -> str:
             f'{read_minutes(item)} min</span></div>'
             f'<a href="{href}" style="{_F}font-size:{19 if big else 17}px;font-weight:bold;'
             f'color:{_P["ink"]};text-decoration:none;line-height:{25 if big else 23}px;{_LH}">{title}</a>'
-            f'{why_html}{also_html}</td></tr></table></td></tr>')
+            f'{why_html}{also_html}{_feedback(item, feedback_to)}</td></tr></table></td></tr>')
 
 def _cover_skim(skim, edition_url) -> str:
     link = _safe_url(edition_url).split("#")[0]
@@ -288,7 +314,7 @@ def _cover_footer(title, n_sources, org, link, unsubscribe, address) -> str:
             f'line-height:19px;{_LH}">{"<br>".join(lines)}</td></tr>')
 
 def _cover_email(title, themes, *, greeting, edition_url, preheader, summary, org, now,
-                 unsubscribe, address) -> str:
+                 unsubscribe, address, feedback="") -> str:
     order, skim = triage(themes)
     n_skim = sum(len(its) for _, its in skim)
     n_sources = len({i.source for i in all_items(themes)})
@@ -302,7 +328,8 @@ def _cover_email(title, themes, *, greeting, edition_url, preheader, summary, or
         minutes = sum(read_minutes(i) for i in order)
         body += _section_label("Your reading order",
                                f'{_plural(len(order), "story", "stories")} &middot; ~{minutes} min')
-        body += "".join(_order_row(n, i, org) for n, i in enumerate(order))
+        to = feedback_address(feedback)
+        body += "".join(_order_row(n, i, org, to) for n, i in enumerate(order))
     if skim:
         body += _section_label("Skim if you have time", _plural(n_skim, "headline", "headlines"))
         body += _cover_skim(skim, link)
@@ -379,15 +406,16 @@ def _preheader(text) -> str:
 
 def build_html_email(title, themes, *, greeting="", edition_url="", cover=False,
                      preheader="", summary=None, org="", now=None, unsubscribe="",
-                     address="") -> str:
+                     address="", feedback="") -> str:
     """The email. `cover=True` builds the short triage cover (see above);
-    `summary` (summary.py), `org` (priority.org, for "For <org>:"), and the
-    footer's `unsubscribe` link and postal `address` apply to the cover only."""
+    `summary` (summary.py), `org` (priority.org, for "For <org>:"), the
+    footer's `unsubscribe` link and postal `address`, and `feedback` (where
+    "Useful / Not for us" votes go) apply to the cover only."""
     now = now or datetime.now(timezone.utc)
     if cover:
         return _cover_email(title, themes, greeting=greeting, edition_url=edition_url,
                             preheader=preheader, summary=summary or [], org=org, now=now,
-                            unsubscribe=unsubscribe, address=address)
+                            unsubscribe=unsubscribe, address=address, feedback=feedback)
     greet_html = f'<div class="greeting">{escape(greeting)}</div>' if greeting else ""
     body = ""
     for theme in themes:

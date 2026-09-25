@@ -64,7 +64,8 @@ def run(cfg, history_path="history.json", now=None) -> None:
                             preheader=(cover_preheader(themes, greeting, summary) if cover
                                        else (greeting or lead)),
                             summary=summary, org=org, now=now,
-                            unsubscribe=cfg.email_unsubscribe, address=cfg.email_address)
+                            unsubscribe=cfg.email_unsubscribe, address=cfg.email_address,
+                            feedback=cfg.email_feedback)
     subject = top_pick_subject(title, themes) if cfg.email_subject == "top_pick" else None
     send_email(title, html, subject=subject, from_name=cfg.email_from_name)
 

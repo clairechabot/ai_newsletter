@@ -323,3 +323,19 @@ def test_followups_are_tagged_in_the_skim():
     html = build_html_email("E", themes, edition_url="https://s/", cover=True)
     skim = html.split("Skim if you have time")[1]
     assert "Follow-up &middot; Src" in skim and skim.count("Follow-up") == 1
+
+
+def test_feedback_links_are_mailto_votes_per_story(monkeypatch):
+    from briefing.email import feedback_address
+    from urllib.parse import unquote
+    monkeypatch.setenv("EMAIL_SENDER", "edge@x.com")
+    assert feedback_address("sender") == "edge@x.com" and feedback_address("team@x.co") == "team@x.co"
+    assert feedback_address("javascript:alert(1)") == "" and feedback_address("a b@x.com") == ""
+    html = build_html_email("E", _triage_themes(), edition_url="https://s/", cover=True, feedback="sender")
+    order = html.split("Your reading order")[1].split("Skim if you have time")[0]
+    assert order.count("Worth it?") == 3 and order.count('href="mailto:edge@x.com?subject=') == 6
+    assert unquote("Useful%3A%20Marketplace") in unquote(order)
+    assert "Not%20for%20us%3A%20Opus%205.5%20and%20GPT-6%20land%20on%20the%20same%20day" in order
+    skim = html.split("Skim if you have time")[1]
+    assert "Worth it?" not in skim
+    assert "Worth it?" not in build_html_email("E", _triage_themes(), edition_url="https://s/", cover=True)

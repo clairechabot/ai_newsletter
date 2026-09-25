@@ -72,6 +72,7 @@ email:
   mode: cover              # triage email: day in 30 seconds, reading order, skim headlines + link to the web edition
   from_name: "The Edge"    # sender name shown in Gmail
   unsubscribe: sender      # footer Unsubscribe = a mailto: to the sending account (kept in Secrets, not here)
+  feedback: sender         # "Useful / Not for us" under each reading-order story, emailed to the sending account
 
 # Reading priority: labels every item "Read first", "Read today" or "Later"
 # for Khare, and puts a "Read first today" list at the top of each edition.

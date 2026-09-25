@@ -9,7 +9,8 @@ render (email + optional web edition).
   (tables + inline styles): the day in 30 seconds, a numbered reading order with read times, at
   most 3 skim headlines per section with an "N more" link to `#skim-<n>` on the web edition, and
   a CTA, plus archive links (masthead, a secondary button, footer). `email.unsubscribe` (`sender` =
-  mailto the sending account) / `email.address` add footer lines (default off). `EMAIL_RECIPIENT` may be a comma-separated list (each reader gets
+  mailto the sending account) / `email.address` add footer lines, `email.feedback` adds
+  "Useful / Not for us" mailto: links per reading-order story (all default off). `EMAIL_RECIPIENT` may be a comma-separated list (each reader gets
   their own message). `email.subject: top_pick` puts the lead headline in the subject line;
   `email.from_name` sets the inbox sender name.
 - **priority** (`priority.py`): one Claude call after filtering labels each item `first` /
