@@ -36,6 +36,7 @@ from briefing.llm import claude_json, make_client
 
 TIERS = ("first", "today", "later")
 DEFAULT_MINUTES = 3  # read time when the article couldn't be measured
+FALLBACK_ORDER = 3   # unlabelled editions: lead story of this many sections
 LABELS = {"first": "Read first", "today": "Read today", "later": "Later"}
 _RANK = {t: n for n, t in enumerate(TIERS)}
 
@@ -209,14 +210,16 @@ def reading_list(themes) -> list:
 
 def triage(themes) -> tuple:
     """(reading order, skim). The reading order is every Read first item, then
-    every Read today item, in Claude's rank order. Without any labels the lead
-    story stands in as the whole reading order. Skim is [(theme, items)] for
+    every Read today item, in Claude's rank order. Without any labels (priority
+    off, or its call failed) the top story of each of the first FALLBACK_ORDER
+    sections stands in, so an outage day still has a reading order. Skim is
+    [(theme, items)] for
     everything else, in theme order, leaving out empty sections."""
     items = [i for t in themes for i in t["items"]]
     order = sorted((i for i in items if i.extra.get("priority") in ("first", "today")),
                    key=_order_key)
     if not order and items:
-        order = [items[0]]
+        order = [t["items"][0] for t in themes if t["items"]][:FALLBACK_ORDER]
     shown = {id(i) for i in order}
     skim = [(t, [i for i in t["items"] if id(i) not in shown]) for t in themes]
     return order, [(t, its) for t, its in skim if its]
