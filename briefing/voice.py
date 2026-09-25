@@ -26,7 +26,7 @@ voice doesn't settle into one stock opener. Replies that read like the model
 thinking aloud ("Let me...", "Here's a greeting:") are discarded.
 """
 from __future__ import annotations
-from briefing.llm import make_client
+from briefing.llm import make_client, MODEL, THINKING_HEADROOM
 import os
 import re
 from collections import Counter
@@ -42,7 +42,6 @@ _REASONING_OPENERS = (
 _REASONING_ANYWHERE = ("let me think", "let me try", "here's a greeting",
                        "here is a greeting", "as an ai")
 
-MODEL = os.environ.get("BRIEFING_MODEL", "claude-sonnet-4-6")
 
 
 def _client():
@@ -107,7 +106,7 @@ def compose_greeting(voice, themes, recent=None) -> str:
     )
     try:
         msg = _client().messages.create(
-            model=MODEL, max_tokens=200,
+            model=MODEL, max_tokens=200 + THINKING_HEADROOM,
             messages=[{"role": "user", "content": prompt}],
         )
         text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")

@@ -75,5 +75,5 @@ jobs:
             End with a one-line verdict. This is ADVISORY — do not fail the check.
           # Sonnet for cost; cap turns so a single review can't run away.
           claude_args: |
-            --model claude-sonnet-4-6
+            --model claude-sonnet-5
             --max-turns 30
