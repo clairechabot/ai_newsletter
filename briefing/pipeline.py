@@ -15,12 +15,29 @@ from briefing.web import build_web_edition, save_edition, build_archive_index, c
 from briefing.weekly import (is_weekly, skips_today, picks_wanted, week_candidates, pick_week,
                              weekly_themes, WEEKLY_LABEL, WEEKLY_SLOT)
 
-def run(cfg, history_path="history.json", now=None) -> None:
+EDITIONS = ("auto", "daily", "weekly")
+
+def run(cfg, history_path="history.json", now=None, *, edition="auto", preview=False,
+        only_if_unsent=False) -> None:
+    """One edition, start to finish.
+
+    `edition` forces "daily" or "weekly" regardless of the day ("auto" follows
+    `schedule`; a forced edition also runs at weekends). `preview` sends the
+    email with a "[Preview]" subject but saves nothing: no history, no web
+    edition, so the real edition still has every story. `only_if_unsent` is
+    the backup trigger: skip if history says an edition already went out today.
+    """
     now = now or datetime.now()  # local time decides which edition (AM/PM) runs
-    if skips_today(cfg.schedule, now):
+    today = now.strftime("%Y-%m-%d")
+    if edition not in EDITIONS:
+        raise ValueError(f"edition must be one of {EDITIONS}, got {edition!r}")
+    if edition == "auto" and skips_today(cfg.schedule, now):
         print(f"[pipeline] {now:%A}: no edition at weekends (schedule.skip_weekends)", flush=True)
         return
-    weekly = is_weekly(cfg.schedule, now)
+    if only_if_unsent and load_history(history_path).get("last_sent") == today:
+        print(f"[pipeline] today's edition already went out; backup run not needed", flush=True)
+        return
+    weekly = is_weekly(cfg.schedule, now) if edition == "auto" else edition == "weekly"
     slot = pick_edition(cfg.editions, now.hour)
     title = f"{cfg.title} — {slot['label']}" if slot.get("label") else cfg.title
 
@@ -39,7 +56,6 @@ def run(cfg, history_path="history.json", now=None) -> None:
     add_images(selected, cfg.images)    # optional: preview image + read time per item
     # optional: labels read first / today / later and folds duplicate coverage
     # of one event into its lead story (the others ride along in extra["also"])
-    today = now.strftime("%Y-%m-%d")
     selected = prioritize(selected, cfg.priority, topics=cfg.topics(),
                           recent=recent_titles(hist, today))
     themes = order_themes(group_into_themes(selected, cfg.voice))
@@ -62,7 +78,7 @@ def run(cfg, history_path="history.json", now=None) -> None:
     org = cfg.priority.get("org", "") if cfg.priority.get("enabled") else ""
 
     # Web edition (optional): write the browsable page + permanent archive copy.
-    if cfg.web.get("enabled"):
+    if cfg.web.get("enabled") and not preview:
         out_dir = cfg.web.get("output_dir", "docs")
         page = build_web_edition(title, themes, greeting=greeting,
                                  edition_label=slot.get("label", ""),
@@ -88,9 +104,15 @@ def run(cfg, history_path="history.json", now=None) -> None:
                             unsubscribe=cfg.email_unsubscribe, address=cfg.email_address,
                             feedback=cfg.email_feedback, weekly=weekly)
     subject = top_pick_subject(title, themes) if cfg.email_subject == "top_pick" else None
+    if preview:
+        subject = "[Preview] " + (subject or f"{title} - {now:%b %d, %Y}")
     send_email(title, html, subject=subject, from_name=cfg.email_from_name)
+    if preview:
+        print("[pipeline] preview sent; history and web edition left untouched", flush=True)
+        return
 
     mark_seen(hist, fresh)
+    hist["last_sent"] = today  # the backup trigger checks this
     remember_order(hist, [display_title(i) for i in triage(themes)[0]], today)
     if greeting:
         hist["recent_greetings"] = (hist.get("recent_greetings", []) + [greeting])[-RECENT_KEEP:]

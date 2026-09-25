@@ -214,3 +214,51 @@ def test_friday_without_a_week_to_pick_from_sends_a_daily(tmp_path):
         run(cfg, history_path=str(tmp_path / "h.json"), now=datetime(2026, 9, 25, 6, 13))
     daily_summary.assert_called_once()
     assert sent["title"] == "The Edge" and "Your reading order" in sent["html"]
+
+def _quick_patches(tmp_path, sent, hist=None, saved=None):
+    from contextlib import ExitStack
+    stack = ExitStack()
+    stack.enter_context(patch("briefing.pipeline.fetch_all", return_value=[_item("a")]))
+    stack.enter_context(patch("briefing.pipeline.load_history", return_value=hist or {"seen_ids": []}))
+    stack.enter_context(patch("briefing.pipeline.prioritize", side_effect=lambda items, *a, **k: items))
+    stack.enter_context(patch("briefing.pipeline.group_into_themes",
+                              side_effect=lambda items, voice=None: [{"name": "T", "emoji": "X", "items": list(items)}]))
+    stack.enter_context(patch("briefing.pipeline.summarize", return_value=[]))
+    stack.enter_context(patch("briefing.pipeline.send_email",
+                              side_effect=lambda title, html, **kw: sent.update(title=title, html=html, **kw)))
+    save = stack.enter_context(patch("briefing.pipeline.save_history"))
+    return stack, save
+
+def test_preview_sends_but_saves_nothing(tmp_path):
+    cfg = _sched_cfg(tmp_path)
+    sent = {}
+    stack, save = _quick_patches(tmp_path, sent)
+    with stack:
+        run(cfg, history_path=str(tmp_path / "h.json"), now=datetime(2026, 9, 24, 8, 30),
+            edition="daily", preview=True)
+    assert sent["subject"] == "[Preview] The Edge - Sep 24, 2026"
+    save.assert_not_called()
+    assert not (tmp_path / "docs").exists()  # no web edition, no archive rebuild
+
+def test_forced_edition_overrides_the_weekday_and_weekends(tmp_path):
+    cfg = _sched_cfg(tmp_path)
+    sent = {}
+    stack, _ = _quick_patches(tmp_path, sent)
+    with stack:  # a Saturday, forced daily: runs; Friday forced daily: no Week in 5
+        run(cfg, history_path=str(tmp_path / "h.json"), now=datetime(2026, 9, 26, 9), edition="daily")
+        assert sent["title"] == "The Edge"
+        run(cfg, history_path=str(tmp_path / "h.json"), now=datetime(2026, 9, 25, 9), edition="daily")
+        assert sent["title"] == "The Edge"
+    import pytest
+    with pytest.raises(ValueError):
+        run(cfg, history_path=str(tmp_path / "h.json"), edition="monthly")
+
+def test_backup_run_skips_when_today_already_went_out(tmp_path):
+    cfg = _sched_cfg(tmp_path)
+    sent = {}
+    stack, save = _quick_patches(tmp_path, sent, hist={"seen_ids": [], "last_sent": "2026-09-24"})
+    with stack:
+        run(cfg, history_path=str(tmp_path / "h.json"), now=datetime(2026, 9, 24, 7, 15), only_if_unsent=True)
+        assert sent == {}
+        run(cfg, history_path=str(tmp_path / "h.json"), now=datetime(2026, 9, 25, 7, 15), only_if_unsent=True)
+    assert sent and save.call_args[0][1]["last_sent"] == "2026-09-25"
