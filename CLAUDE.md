@@ -49,6 +49,10 @@ render (email + optional web edition).
   All markup is server-rendered and works without JS; the inline JS only adds read state, gist
   toggles, smooth jumps and the archive filters.
 - **editions** (`editions.py`): AM/PM editions chosen by local hour; match the cron in `daily.yml`.
+- **Runs** (`daily.yml` -> `main.py` -> `pipeline.run`): 06:13 Zurich on weekdays, plus a 07:15
+  backup that runs only if `history.json` `last_sent` isn't today (GitHub drops scheduled runs at
+  times). A manual run can set `preview_to` (email only that address, "[Preview]" subject, save no
+  history or web edition) and `edition` (auto / daily / weekly, which overrides the weekday).
 - **schedule** (`weekly.py`): `skip_weekends` sends nothing Sat/Sun (checked before login or any
   fetch; the cron in `daily.yml` is weekdays-only too). On `weekly_day` (Friday) the edition is the
   "Week in 5": `week_candidates` reads this week's Read first/today rows back from the archive plus

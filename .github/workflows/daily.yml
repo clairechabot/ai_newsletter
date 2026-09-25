@@ -9,7 +9,25 @@ on:
     # are listed and the `season` job skips the one that is wrong today.
     - cron: '13 4 * * 1-5'   # 06:13 Zurich in summer (CEST)
     - cron: '13 5 * * 1-5'   # 06:13 Zurich in winter (CET)
+    # Backup, 07:15 Zurich: GitHub sometimes drops a scheduled run. This one
+    # sends only if history.json shows no edition went out today.
+    - cron: '15 5 * * 1-5'   # 07:15 Zurich in summer (CEST)
+    - cron: '15 6 * * 1-5'   # 07:15 Zurich in winter (CET)
   workflow_dispatch:        # lets you trigger a run by hand from the Actions tab
+    inputs:
+      preview_to:
+        description: "Preview: send ONLY to this address, save nothing (leave blank for a real edition)"
+        required: false
+        default: ""
+      edition:
+        description: "Which edition (auto = by weekday: Friday is the Week in 5)"
+        type: choice
+        options: [auto, daily, weekly]
+        default: auto
+# One run at a time: the backup waits for a late main run, then sees it sent.
+concurrency:
+  group: daily-briefing
+  cancel-in-progress: false
 jobs:
   # Which of the two schedules is right today? (A manual run always goes ahead.)
   season:
@@ -23,7 +41,7 @@ jobs:
         run: |
           zone=$(TZ=Europe/Zurich date +%Z)   # CEST in summer, CET in winter
           case "$SCHEDULE|$zone" in
-            "13 4 * * 1-5|CET"|"13 5 * * 1-5|CEST")
+            "13 4 * * 1-5|CET"|"15 5 * * 1-5|CET"|"13 5 * * 1-5|CEST"|"15 6 * * 1-5|CEST")
               echo "Schedule '$SCHEDULE' belongs to the other season (Zurich is on $zone); skipping."
               echo "run=false" >> "$GITHUB_OUTPUT" ;;
             *)
@@ -54,10 +72,14 @@ jobs:
           ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}   # only for keys not scoped to one workspace
           EMAIL_SENDER:      ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD:    ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_RECIPIENT:   ${{ secrets.EMAIL_RECIPIENT }}   # one address or a comma-separated list
+          # one address or a comma-separated list; a preview goes only to preview_to
+          EMAIL_RECIPIENT:   ${{ inputs.preview_to || secrets.EMAIL_RECIPIENT }}
           SMTP_HOST:         ${{ secrets.SMTP_HOST }}
           SMTP_PORT:         ${{ secrets.SMTP_PORT }}
           YOUTUBE_API_KEY:   ${{ secrets.YOUTUBE_API_KEY }}
+          BRIEFING_EDITION:  ${{ inputs.edition || 'auto' }}
+          BRIEFING_PREVIEW:  ${{ inputs.preview_to && '1' || '' }}
+          BRIEFING_ONLY_IF_UNSENT: ${{ (github.event.schedule == '15 5 * * 1-5' || github.event.schedule == '15 6 * * 1-5') && '1' || '' }}
         run: python main.py
 
       # Commit history.json (so nothing repeats) and, if the web edition is
@@ -67,7 +89,7 @@ jobs:
       # Only after a successful run, so a failed send never publishes an
       # edition nobody was emailed.
       - name: Commit history + web edition
-        if: success()
+        if: success() && !inputs.preview_to
         continue-on-error: true
         run: |
           git config user.name  "github-actions[bot]"
@@ -88,7 +110,7 @@ jobs:
       # with Contents:write on it as the secret EDITION_DEPLOY_TOKEN, and set
       # EDITION_REPO below to "owner/repo". Skips quietly if the secret is absent.
       - name: Publish web edition to public site
-        if: success()
+        if: success() && !inputs.preview_to
         continue-on-error: true
         env:
           EDITION_DEPLOY_TOKEN: ${{ secrets.EDITION_DEPLOY_TOKEN }}
@@ -118,7 +140,7 @@ jobs:
       # EDITION_URL to your public site root (same value as web.edition_url in
       # config.yaml). Skips quietly when blank.
       - name: Verify web edition is live
-        if: success()
+        if: success() && !inputs.preview_to
         continue-on-error: true
         env:
           EDITION_URL: "https://clairechabot.github.io/ai_newsletter/"
