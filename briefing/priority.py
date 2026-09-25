@@ -124,7 +124,7 @@ def prioritize(items, cfg, topics=(), recent=()) -> list:
     if not is_enabled(cfg) or not items:
         return items
     topics = list(topics or ())
-    data = claude_json(_prompt(items, cfg, topics, list(recent or ())), max_tokens=min(5000, 300 + 80 * len(items)),
+    data = claude_json(_prompt(items, cfg, topics, list(recent or ())), max_tokens=min(9000, 400 + 150 * len(items)),
                        context="priority", client_factory=lambda: _client())
     if data is None or not isinstance(data.get("items"), list):
         print("[priority] ranking failed; edition goes out unlabeled", flush=True)
