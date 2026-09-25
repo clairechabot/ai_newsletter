@@ -9,6 +9,8 @@
     "079b50858e956ec9e2cdd32ecd5ff68a0ccc8fa2",
     "09a0c6dbf1c6c00d5fb73a47cc29663a5b36542b",
     "09ad5352d3a7fa0f9a33f359c10d6de0c5a47911",
+    "0d638c52e7b27a2dd22435e29aeb938291617a48",
+    "0f7aef2b44d3498691a688b807bd7f18cd63cf4f",
     "12938bda73f4174427f5b3e9235988df73c2db7d",
     "13250f6d50c1fc056afbc92196e6282522eb6e15",
     "1460df02f2834a97d4249ca2978d96f56835d273",
@@ -64,6 +66,7 @@
     "5e9e5737b35bdb5d58ef85743844715b2b62d2e2",
     "5ebde1473fa5954f43dcce77e65e89484966d3c4",
     "5f91820989b502131f0af92c76d0dd5cef361a57",
+    "6048c3cb6ab2a67ae580e3cee37b3c2fe4d5dca6",
     "60c6c27aa7e922678abd473ea655c9391f094fa7",
     "60f3ae2f1eb7a97b27e575b4dbb690086571714b",
     "618a6ee05cbab586eaad480a0cd93d2cfaa1951b",
@@ -83,6 +86,7 @@
     "735f332fb75dd27497e939cad9bc211a3b4d9b41",
     "73fafdf6f45f6a4122d4bc25473c2af16ea942de",
     "747f6440e0dfc0e6287a83c84775a52729e3ca70",
+    "74cfb1dbf7d798e9c61dd1fe11104284e63c67bd",
     "758f271fe591da953697a2575f2113e0aef50e1a",
     "75d7f1703fc353ffc328462f599736603ed97a39",
     "780b642e10aa2730e406175c78f3bcd79d7ee806",
@@ -113,11 +117,13 @@
     "a55174706dfd44a21cec110f1df4acb3e44576bd",
     "a70f8ac64edfa547f2b1b0f634ede27f1f21d7d5",
     "a748b8827e9c99be35b785a77ead0ce03dfba771",
+    "a7c3d61428cf9e4525ec8f7ae714464eaadeae4e",
     "a7ee698cf201ff3d62c9822cf7976c338bef7212",
     "aad3a7f76d38461dafb546c9e7d09f8db4aefe41",
     "ab62737fbdcc6482b0273fdbf0a28d700621237c",
     "b1b33866a1b11f1bccc05594c5b008eda45d18cc",
     "b2c8bd2640cbe2c1b18473314485ae67d33b95c5",
+    "b5e9b1d792a616cc30b6eec3627e1986823532b0",
     "b6b1e4118cdbb52902a3c3f3fd0aba59eb85acae",
     "be1ff2c57dba66335a1a48eea357c2297b1f6f4f",
     "c22650ec4f431c9c82f58587ce85eb95a792daf6",
@@ -135,12 +141,14 @@
     "daef90c4eeb72941ec95fff208ced69a2511f777",
     "e0d60c26df7d113396b18cf570310b3e76a3b590",
     "e0e53be9e0907bdefe5cc5b7f25648dec67e63b1",
+    "e2e7253c4cd86c3097799c96401d719a0350c9f1",
     "e744962f37c0ec0ab7ddcad1805c75e0a75e39b0",
     "ea54770dd4d5d578297d7a508938e97738fcffdb",
     "ea6a52f91bcf5f747098db4d89a27192e5edbd62",
     "ed2f22c068d17f0f7d6cdd8f2f80ea4106aba713",
     "ef92f87a19b19cb49e9940d9028ab900bc80ffa4",
     "efa0e429896096ef2e1f9295c27d4168efb63616",
+    "efaee291afea511ab145ad44f248156230efea98",
     "f025b7f058c8073988c056b8b43c9e1224517405",
     "f2072a2e6cea804cc9039016125085e426385289",
     "f3e0ed7cfca4e2d6764b7ba00dcd5f6244559bf1",
@@ -174,8 +182,10 @@
     "title::better prompt caching for gpt 6",
     "title::bio security is an ai arms race eric nguyen ceo radical numerics",
     "title::bird raises 450m in debt headcount cut from 1 000 peak to 120",
+    "title::bitget pauses withdrawals following us 351 6m hot wallet hack",
     "title::black forest labs flux 3 action beats pi0 5 at robot control by 1 66x",
     "title::blackstone targets 8 5bn for latest energy transition fund",
+    "title::bootstrapping ai quot building for a flip quot central european vcs have their say",
     "title::browse sifted s company coverage",
     "title::can muse make us forget the metaverse",
     "title::carlyle leans into carve outs as dealmaking gets more competitive",
@@ -245,11 +255,14 @@
     "title::magic ai raises 8m to take its ai powered fitness mirror to the us",
     "title::managed deep agents delivers a better user experience for agents in production",
     "title::meta s muse slashes real time avatar generation from 120 model calls to two",
+    "title::mia ai lab squeezes a 99 gb qwen3 8 flash next onto one gpu",
     "title::microsoft s mai image 2 6 climbs to no 2 faster than any rival",
     "title::microsoft s run assert eval cuts ai agent cross account failures from 43 8 to zero",
     "title::midjourney s v8 drops seamless tiles smarter edits and live style previews",
     "title::muse is having a moment",
+    "title::naver s splade model hits 878k downloads doubling bm25 search accuracy",
     "title::new in langsmith engine red teaming and automated testing",
+    "title::new in langsmith engine v2 managed deep agents fine tuning and more",
     "title::northern gritstone ceo exiting to us acquirers isn t a failure",
     "title::nscale helped bytedance subsidiary access nvidia chips swerving us rules reports",
     "title::nvidia s nemotron 3 beats 12 rivals with a 14 72 speaker error rate",
@@ -258,12 +271,14 @@
     "title::openai extends cyber access to ukraine for civilian defense",
     "title::openai s chatgpt work lets voice control your emails slack and calendar",
     "title::openai s mentalhealthbench tests ai on everyday stress beyond crisis responses",
+    "title::oura ipo to ring up big payday for finnish vc lifeline",
     "title::owow venture studio lands 2 65m to build b2b startups for traditional industries",
     "title::panwatch packs multi agent stock research into one open source docker image",
     "title::perplexity brings portable computer to amd ryzen ai max pcs",
     "title::perplexity s photon slashes search latency by 12x for ai agents",
     "title::prime intellect opens prime sandboxes to run 30m ai agent environments",
     "title::prismml runs bonsai 1 7b on smart glasses at 2x the speed",
+    "title::prototype warfare a defence prime s playbook for turning technology into battlefield capability",
     "title::pushing the frontier is best done outside deepmind alum simon kohl on leaving big tech",
     "title::qdrant s next chapter from vector search into physical ai",
     "title::relai hits us 90m valuation as new investors join us 2 5m round",
@@ -287,6 +302,7 @@
     "title::the ai hype index ai loves cheating",
     "title::the fastest growing spacetech startup teams in europe",
     "title::the pacing era s first launch day",
+    "title::the pentagon wants 30 million to build an ai powered lie detector",
     "title::the reliability layer for healthcare ai common langsmith use cases",
     "title::the thorny issue of lp incentivisation",
     "title::trajectories now in langsmith a readable view of every agent session",
@@ -303,23 +319,24 @@
   "recent_order": [
     {
       "date": "2026-09-25",
-      "title": "Claude Opus 5.5, GPT-6 Sol, GPT-6 Luna, and a new price war"
-    },
-    {
-      "date": "2026-09-25",
       "title": "Cohere Brings Model Vault to Canada for Enterprises Needing Data Sovereignty"
     },
     {
       "date": "2026-09-25",
-      "title": "Microsoft's run-assert-eval Cuts AI Agent Cross-Account Failures From 43.8% to Zero"
+      "title": "[AINews] Claude Opus 5.5, the new default model for AINews \u2014 and everybody cuts prices 40-50%"
     },
     {
       "date": "2026-09-25",
-      "title": "Switzerland's top-funded tech companies in H1 2026"
+      "title": "Anthropic's Claude Marketplace Unifies 2,000 Partners Into One Enterprise Hub"
     },
     {
       "date": "2026-09-25",
-      "title": "Kontext raises $4M for runtime security platform for AI agents"
+      "title": "Google's Antigravity SDK Lets Gemma 4 Run Agent Workflows Without the Cloud"
+    },
+    {
+      "date": "2026-09-25",
+      "title": "New in LangSmith: Engine v2, Managed Deep Agents, Fine-Tuning, and more"
     }
-  ]
+  ],
+  "last_sent": "2026-09-25"
 }
