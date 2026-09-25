@@ -191,3 +191,49 @@ def test_edition_data_rows_carry_minutes_and_also(tmp_path):
     assert by_title["Price war"]["cluster"].startswith("Opus 5.5")
     save_edition(str(tmp_path), html, "2026-09-24", "daily")
     assert "Price war" in build_archive_index(str(tmp_path))
+
+
+def test_edition_links_the_archive_and_embeds_topic_and_summary():
+    import json
+    themes = _triage_themes()
+    themes[0]["items"][0].extra["topic"] = "Governed AI"
+    html = build_web_edition("The Edge", themes, summary=SUMMARY, edition_date="2026-09-24")
+    page = _body(html).split('<script id="edition-data"')[0]
+    bar = page.split('class="tbar"')[1].split("</nav>")[0]
+    assert '<a class="abtn" href="archive.html">Search the archive →</a>' in bar
+    cta = page.split('class="acta"')[1]
+    assert page.index('id="skim"') < page.index('class="acta"')
+    assert '<a class="acta" href="archive.html">' in page and "Open the archive →" in cta
+    assert "Search every story The Edge has sent, by topic, priority or source." in cta
+    rows = json.loads(html.split('<script id="edition-data" type="application/json">')[1].split("</script>")[0])
+    by = {r["title"]: r for r in rows}
+    assert by["Marketplace"]["topic"] == "Governed AI" and by["Skim 1"]["topic"] == ""
+    assert by["Marketplace"]["n"] == 1 and by["Price war"]["n"] == 3 and by["Skim 1"]["n"] is None
+    summary = json.loads(html.split('<script id="edition-summary" type="application/json">')[1].split("</script>")[0])
+    assert summary[0] == {"lead": "Price war.", "text": "Frontier prices fell <40%>."}
+
+def test_archive_has_topics_day_takes_and_reads_old_editions(tmp_path):
+    import json
+    from briefing.web import collect_takes
+    out = tmp_path / "docs"
+    themes = _triage_themes()
+    themes[0]["items"][0].extra["topic"] = "Governed AI"
+    save_edition(str(out), build_web_edition("E", themes, summary=SUMMARY, edition_date="2026-09-24",
+                                             slot_key="daily"), "2026-09-24", "daily")
+    # an edition from before topics, minutes and summaries existed
+    old = [{"title": "Old one", "url": "https://x/old", "source": "S", "summary": "", "image": "",
+            "p": "first", "why": "w", "section": "T", "tab": "T"}]
+    (out / "editions").mkdir(exist_ok=True)
+    (out / "editions" / "2026-09-20-daily.html").write_text(
+        '<script id="edition-data" type="application/json">' + json.dumps(old) + "</script>")
+    assert collect_takes(str(out)) == {"2026-09-24": "Price war. Frontier prices fell <40%>."}
+    html = build_archive_index(str(out), site_title="The Edge", topics=["Governed AI", "Frontier models"])
+    body = _body(html)
+    assert 'id="q"' in body and 'placeholder="Headlines, companies, why-it-matters lines"' in body
+    assert 'id="tiers"' in body and 'data-v="first"' in body and '<i class="dot-today"></i>' in body
+    assert 'data-k="" aria-pressed="true"><span>All topics</span>' in body
+    assert body.index('data-k="Governed AI"') < body.index('data-k="Frontier models"') < body.index('data-k="Other"')
+    assert 'id="src"' in body and 'id="archive-takes"' in body
+    rows = json.loads(body.split('<script id="archive-data" type="application/json">')[1].split("</script>")[0])
+    assert {"Old one", "Marketplace"} <= {r["title"] for r in rows}
+    assert "\\u003c40%>" in body or "\u003c40%>" in body  # takes escaped inside the script block

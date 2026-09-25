@@ -41,7 +41,7 @@ sources:
 #   mode: cover
 #   subject: top_pick
 #   from_name: "The Edge"
-#   unsubscribe: "mailto:you@example.com?subject=Unsubscribe"
+#   unsubscribe: sender   # a mailto: to EMAIL_SENDER; or any URL / "mailto:you@example.com?subject=Unsubscribe"
 #   address: "Acme Ltd · 1 Example Street, Zurich"
 
 # summary: "The day in 30 seconds": three one-line takeaways at the top of the
@@ -95,6 +95,12 @@ sources:
 #   edition_url: "https://YOURNAME.github.io/YOURREPO/"
 #   reading_images: first   # pictures in the reading order: first (default) | all | none
 #   skim_expanded: false    # true opens every skim headline's gist by default
+
+# archive: the Archive page filters by fixed topics. With priority on, the
+# priority call gives each story one. Default: short labels made from
+# `filter.interests`; list your own to control the wording.
+# archive:
+#   topics: ["Frontier models", "Governed AI", "Regulation & policy"]
 
 # editions: ship more than once a day. Listed in chronological order; each runs
 # when the local hour is before its `until_hour`. The last one is the catch-all.

@@ -61,7 +61,7 @@ def test_run_prioritizes_before_theming_and_leads_with_read_first(tmp_path):
                  per_source_cap=2, recency_hours=24,
                  sources=[{"type": "rss", "name": "S", "url": "http://x"}],
                  priority={"enabled": True, "context": "x"}, email_subject="top_pick")
-    def label(items, pcfg):
+    def label(items, pcfg, topics=()):
         items[1].extra.update(priority="first", why="w")
         return items
     sent = {}
@@ -99,7 +99,7 @@ def test_run_folds_clusters_summarizes_and_sends_cover(tmp_path):
                  summary={"enabled": True}, email_mode="cover",
                  web={"enabled": True, "output_dir": str(tmp_path / "docs"),
                       "edition_url": "https://site/"})
-    def label(items, pcfg):
+    def label(items, pcfg, topics=()):
         a, b = sorted(items, key=lambda i: i.id)
         a.extra.update(priority="first", why="w", also=[b])
         return [a]  # b folded into a

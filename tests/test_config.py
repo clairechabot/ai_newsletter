@@ -96,3 +96,18 @@ def test_summary_and_cover_footer_default_off(tmp_path):
     cfg = load_config(str(p))
     assert cfg.summary == {"enabled": True}
     assert cfg.email_unsubscribe == "mailto:u@x.com" and cfg.email_address == "1 Road, Zurich"
+
+def test_archive_topics_from_config_or_interests(tmp_path):
+    from briefing.config import load_config, topic_label
+    assert topic_label("AI for private capital: deal screening, due diligence") == "AI for private capital"
+    assert topic_label("frontier model releases, capabilities") == "Frontier model releases"
+    assert topic_label("EU AI Act, AI regulation") == "EU AI Act"
+    assert len(topic_label("a very long interest line without any punctuation at all")) <= 28
+    base = ('filter: {mode: recent, interests: ["longevity research", "AI policy: Europe"]}\n'
+            'sources: [{type: rss, name: X, url: "http://x"}]\n')
+    p = tmp_path / "c.yaml"
+    p.write_text(base)
+    assert load_config(str(p)).topics() == ["Longevity research", "AI policy"]
+    p.write_text(base + 'archive: {topics: ["Governed AI", " governed ai ", "", "Work & society"]}\n')
+    assert load_config(str(p)).topics() == ["Governed AI", "Work & society"]
+    assert len(load_config("config.yaml").topics()) == 8
