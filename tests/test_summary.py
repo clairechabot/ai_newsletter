@@ -60,3 +60,17 @@ def test_ref_target_labels_and_anchors():
     assert ref_target({"stories": [1, 2, 4]}, names) == ("Stories 1, 2 and 4", "order-0")
     assert ref_target({"section": 1}, names) == ("Skim: Money", "skim-1")
     assert ref_target(None, names) == ("", "") and ref_target({"section": 5}, names) == ("", "")
+
+
+def test_prompt_is_written_for_the_priority_profile():
+    profile = {"enabled": True, "org": "Khare", "context": "Khare builds AI screening for VCs."}
+    client = _client({"summary": [{"lead": "A.", "text": "b"}]})
+    with patch("briefing.summary._client", return_value=client):
+        summarize(_themes(), {"enabled": True}, profile=profile)
+    prompt = client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "team at Khare" in prompt and "Khare builds AI screening for VCs." in prompt
+    assert "Never invent a link" in prompt
+    for off in (None, {"enabled": False, "context": "x"}, {"enabled": True, "context": " "}):
+        with patch("briefing.summary._client", return_value=_client({"summary": []})) as c:
+            summarize(_themes(), {"enabled": True}, profile=off)
+        assert "The readers are" not in c.return_value.messages.create.call_args.kwargs["messages"][0]["content"]

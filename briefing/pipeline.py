@@ -34,7 +34,7 @@ def run(cfg, history_path="history.json", now=None) -> None:
     # of one event into its lead story (the others ride along in extra["also"])
     selected = prioritize(selected, cfg.priority, topics=cfg.topics())
     themes = order_themes(group_into_themes(selected, cfg.voice))
-    summary = summarize(themes, cfg.summary)  # optional: "The day in 30 seconds"
+    summary = summarize(themes, cfg.summary, profile=cfg.priority)  # optional: "The day in 30 seconds"
     greeting = compose_greeting(cfg.voice, themes, recent=hist.get("recent_greetings"))
     org = cfg.priority.get("org", "") if cfg.priority.get("enabled") else ""
 
