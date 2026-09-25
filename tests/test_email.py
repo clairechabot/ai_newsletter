@@ -73,7 +73,8 @@ def test_cover_is_triage_first():
     html = build_html_email("The Edge", _triage_themes(), edition_url="https://site/", cover=True,
                             summary=SUMMARY, org="Khare", now=dt(2026, 9, 24, 6, 13),
                             unsubscribe="mailto:u@x.com?subject=Unsubscribe", address="Khare, Zurich")
-    assert '<meta name="color-scheme" content="light dark">' in html and "<!--[if mso]>" in html
+    assert '<meta name="color-scheme" content="light only">' in html and "<!--[if mso]>" in html
+    assert "light dark" not in html and ":root{color-scheme:light only" in html
     assert ">Thursday, 24 Sep</td>" in html
     assert "3 to read</b> (~13 min) &middot; <b" in html and ">5</b> to skim &middot; 3 sources" in html
     # the day in 30 seconds, escaped
@@ -128,6 +129,10 @@ def test_cover_without_priority_or_summary():
     assert "Next" in html.split("Skim if you have time")[1]
     assert "Open the full edition" not in html and "more in" not in html  # nowhere to link to
     assert "curated by Claude from 1 source." in html
+
+def test_full_mode_is_light_only():
+    html = build_html_email("B", [{"name": "T", "emoji": "X", "items": [_item("H")]}])
+    assert '<meta name="color-scheme" content="light only">' in html
 
 def test_full_mode_shows_cluster_sources():
     it = _mk("Lead", also=[_mk("Dup", source="Other Pub")])

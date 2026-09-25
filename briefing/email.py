@@ -12,6 +12,11 @@ from briefing.priority import (LABELS, reading_list, triage, all_items, read_min
 
 SKIM_MAX = 3         # headlines per section in the cover email; the rest are on the web
 PREHEADER_MAX = 140  # characters of inbox preview
+# Every colour here is chosen for a light background, so tell mail apps not
+# to restyle it for dark mode. Apple Mail and Outlook honour this; the Gmail
+# apps may still invert, which the palette's contrast survives.
+_LIGHT_ONLY = ('<meta name="color-scheme" content="light only">'
+               '<meta name="supported-color-schemes" content="light only">')
 
 _CSS = css(
     "body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:$paper;"
@@ -312,11 +317,11 @@ def _cover_email(title, themes, *, greeting, edition_url, preheader, summary, or
     return (
         '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        '<meta name="color-scheme" content="light dark">'
-        '<meta name="supported-color-schemes" content="light dark">'
+        f'{_LIGHT_ONLY}'
         f'<title>{escape(title)}</title>'
         '<!--[if mso]><style>table,td{font-family:Arial,Helvetica,sans-serif!important}</style><![endif]-->'
-        '<style>@media (max-width:620px){.px{padding-left:16px!important;padding-right:16px!important}}</style>'
+        '<style>:root{color-scheme:light only;supported-color-schemes:light only}'
+        '@media (max-width:620px){.px{padding-left:16px!important;padding-right:16px!important}}</style>'
         f'</head><body style="margin:0;padding:0;background:{_P["paper"]};">{_preheader(preheader)}'
         f'<table {_T} bgcolor="{_P["paper"]}" style="background:{_P["paper"]};"><tr>'
         '<td align="center" style="padding:24px 12px;">'
@@ -386,8 +391,8 @@ def build_html_email(title, themes, *, greeting="", edition_url="", cover=False,
                  f'{escape(theme["name"])}</p>{cards}')
     header = (f'<div class="header"><h1>{escape(title)}</h1>'
               f'<div class="date">{now.strftime("%A, %B %d")}</div></div>')
-    return (f'<!DOCTYPE html><html><head><meta charset="utf-8">'
-            f'<style>{_CSS}</style></head><body>{_preheader(preheader)}<div class="wrapper">'
+    return (f'<!DOCTYPE html><html><head><meta charset="utf-8">{_LIGHT_ONLY}'
+            f'<style>:root{{color-scheme:light only}}{_CSS}</style></head><body>{_preheader(preheader)}<div class="wrapper">'
             f'{header}{greet_html}{_reading_list(themes)}{body}'
             f'<div class="footer">Curated by Claude</div></div></body></html>')
 
