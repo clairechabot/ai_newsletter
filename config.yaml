@@ -43,6 +43,14 @@ sources:
   - { type: rss, name: "Fintechnews Switzerland", url: "https://fintechnews.ch/feed/" }
   - { type: rss, name: "Sifted",           url: "https://sifted.eu/feed" }
 
+  # ── Private capital: VC, private equity & fund operations (Khare's buyers) ──
+  - { type: rss, name: "Venture Capital Journal",      url: "https://www.venturecapitaljournal.com/feed/" }
+  - { type: rss, name: "Private Equity International", url: "https://www.privateequityinternational.com/feed/" }
+  - { type: rss, name: "Private Funds CFO",            url: "https://www.privatefundscfo.com/feed/" }  # fund ops, compliance, reporting
+  - { type: rss, name: "Tech.eu",                      url: "https://tech.eu/feed/" }                  # European startup funding
+  # Also checked: Private Debt Investor (feed returns no items), PitchBook (403),
+  # Institutional Investor / Unquote / Real Deals (no public feed), AltFi (empty).
+
   # ── Society, work & platform power ──
   - { type: rss, name: "One Useful Thing", url: "https://www.oneusefulthing.org/feed" }
   - { type: rss, name: "Platformer",       url: "https://www.platformer.news/rss/" }
