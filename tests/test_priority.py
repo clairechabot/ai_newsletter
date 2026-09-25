@@ -131,3 +131,20 @@ def test_triage_orders_by_rank_and_skims_the_rest():
     d.extra["cluster_title"] = "Event"
     assert display_title(d) == "Event" and display_title(a) == a.title
     assert read_minutes(a) == 3 and read_minutes(_item(7)) == 3
+
+def test_topics_are_assigned_and_validated():
+    items = [_item(n) for n in range(4)]
+    topics = ["Governed AI", "Frontier models"]
+    client = _client({"items": [
+        {"i": 0, "p": "first", "t": "governed ai"}, {"i": 1, "p": "later", "t": "Crypto"},
+        {"i": 2, "p": "later"}, {"i": 3, "p": "later", "t": "Frontier models", "same_as": 2}]})
+    with patch("briefing.priority._client", return_value=client):
+        kept = prioritize(items, CFG, topics=topics)
+    assert [i.extra["topic"] for i in kept] == ["Governed AI", "", "Frontier models"]  # lead takes member's
+    prompt = client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert '"Governed AI", "Frontier models"' in prompt and '"t": "<topic>"' in prompt
+    plain = [_item(9)]
+    with patch("briefing.priority._client", return_value=_client({"items": [{"i": 0, "p": "later"}]})) as c:
+        prioritize(plain, CFG)
+    assert "topic" not in plain[0].extra
+    assert '"t"' not in c.return_value.messages.create.call_args.kwargs["messages"][0]["content"]

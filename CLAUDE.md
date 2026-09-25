@@ -8,7 +8,8 @@ render (email + optional web edition).
 - **email.mode** (`email.py`): `full` emails everything; `cover` emails a triage-first cover
   (tables + inline styles): the day in 30 seconds, a numbered reading order with read times, at
   most 3 skim headlines per section with an "N more" link to `#skim-<n>` on the web edition, and
-  a CTA. `email.unsubscribe` / `email.address` add footer lines (default off). `EMAIL_RECIPIENT` may be a comma-separated list (each reader gets
+  a CTA, plus archive links (masthead, a secondary button, footer). `email.unsubscribe` (`sender` =
+  mailto the sending account) / `email.address` add footer lines (default off). `EMAIL_RECIPIENT` may be a comma-separated list (each reader gets
   their own message). `email.subject: top_pick` puts the lead headline in the subject line;
   `email.from_name` sets the inbox sender name.
 - **priority** (`priority.py`): one Claude call after filtering labels each item `first` /
@@ -16,7 +17,8 @@ render (email + optional web edition).
   in `priority.context`; themes are re-sorted by it. The same call clusters duplicate coverage
   (`same_as`): the lead keeps the others in `extra["also"]`, gets `extra["cluster_title"]` and the
   group's best tier, and `prioritize` returns the list without them. `extra["rank"]` is Claude's
-  order. `priority.triage(themes)` gives the renderers' (reading order, skim) split. Fails soft to
+  order. With topics (`Config.topics()`: `archive.topics`, else labels from `filter.interests`) it
+  also sets `extra["topic"]` (validated, "" if none). `priority.triage(themes)` gives the renderers' (reading order, skim) split. Fails soft to
   unlabeled, unclustered items.
 - **summary** (`summary.py`): "The day in 30 seconds": one Claude call after theming, 3
   `{lead, text, short, ref}` takeaways (`ref` = `{"stories": [..]}` or `{"section": n}`). Off by
@@ -35,8 +37,11 @@ render (email + optional web edition).
   progress bar, the day in 30 seconds + a time budget, the numbered reading order with "Mark as
   read" kept in localStorage, and a skim list per section, `id="skim-<n>"`, with tap-for-gist rows;
   `web.skim_expanded` opens them all), a permanent `docs/editions/<date>-<slot>.html` that embeds its stories as
-  JSON (`<script id="edition-data">`), and rebuilds `docs/archive.html` from those embedded rows:
-  every story ever sent, searchable, filterable, grouped by week. Served by GitHub Pages (`/docs`).
+  JSON (`<script id="edition-data">`, rows carry `topic`, `n`, `minutes`, `also`) plus its summary
+  (`edition-summary`), and rebuilds `docs/archive.html` from those: every story ever sent, grouped
+  by day with a "That day" line, searchable (highlighted), filterable by priority, topic and source,
+  state mirrored in the URL hash (`#q=..&tier=..&topic=..&source=..`). Old editions without the new
+  fields still load (no topic = "Other"). Served by GitHub Pages (`/docs`).
   All markup is server-rendered and works without JS; the inline JS only adds read state, gist
   toggles, smooth jumps and the archive filters.
 - **editions** (`editions.py`): AM/PM editions chosen by local hour; match the cron in `daily.yml`.

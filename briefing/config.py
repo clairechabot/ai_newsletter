@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
+import re
 import yaml
 
 VALID_MODES = {"interests", "recent", "per_source_cap", "claude_curate"}
@@ -9,6 +10,15 @@ VALID_SUBJECTS = {"date", "top_pick"}
 
 class ConfigError(Exception):
     pass
+
+def topic_label(interest, limit=28) -> str:
+    """A short archive topic from a long interest line: the part before the
+    first colon or comma, capitalised, cut at a word under `limit` characters.
+    "AI for private capital: deal screening, ..." -> "AI for private capital"."""
+    head = re.split(r"[:,;(]", " ".join(str(interest or "").split()), maxsplit=1)[0].strip()
+    if len(head) > limit:
+        head = head[:limit].rsplit(" ", 1)[0]
+    return head[:1].upper() + head[1:]
 
 @dataclass
 class Config:
@@ -27,11 +37,23 @@ class Config:
     summary: dict = field(default_factory=dict)     # "The day in 30 seconds" (summary.py)
     web: dict = field(default_factory=dict)          # web edition + archive (web.py)
     editions: list = field(default_factory=list)     # AM/PM schedule (editions.py)
+    archive: dict = field(default_factory=dict)      # archive topics (web.py archive)
     email_mode: str = "full"                         # "full" | "cover"
     email_subject: str = "date"                      # "date" | "top_pick"
     email_from_name: str = ""                        # inbox sender name; "" = account name
     email_unsubscribe: str = ""                      # cover footer link (URL or mailto:); "" = none
     email_address: str = ""                          # cover footer postal line; "" = none
+
+    def topics(self) -> list:
+        """Fixed archive topics: `archive.topics`, else short labels derived
+        from `filter.interests`. Duplicates and blanks are dropped."""
+        raw = (self.archive or {}).get("topics") or [topic_label(i) for i in self.interests]
+        out = []
+        for t in raw:
+            t = " ".join(str(t or "").split())
+            if t and t.lower() not in {o.lower() for o in out}:
+                out.append(t)
+        return out
 
 def load_config(path: str) -> Config:
     with open(path, "r", encoding="utf-8") as fh:
@@ -69,6 +91,7 @@ def load_config(path: str) -> Config:
         summary=raw.get("summary", {}) or {},
         web=raw.get("web", {}) or {},
         editions=raw.get("editions", []) or [],
+        archive=raw.get("archive", {}) or {},
         email_mode=email_mode,
         email_subject=email_subject,
         email_from_name=str(email.get("from_name", "") or ""),

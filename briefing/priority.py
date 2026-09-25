@@ -30,6 +30,7 @@ edition, so keep it to what you're comfortable publishing if the repo or site
 is public.
 """
 from __future__ import annotations
+import json
 import os
 from briefing.llm import claude_json, make_client
 
@@ -52,7 +53,7 @@ def rank(item) -> int:
     return _RANK.get(item.extra.get("priority"), len(TIERS))
 
 
-def _prompt(items, cfg) -> str:
+def _prompt(items, cfg, topics=()) -> str:
     org = cfg.get("org") or "the reader's company"
     max_first = int(cfg.get("max_first", 3))
     catalogue = "\n".join(f"[{n}] {i.source} | {i.title} | {i.summary[:300]}"
@@ -75,9 +76,13 @@ def _prompt(items, cfg) -> str:
         'as the lead and give every other one "same_as": <lead index>. Give the lead '
         '"cluster_title": one plain headline for the whole event, at most 14 words, and '
         'write its "why" for the event as a whole.\n'
-        "List every item, most important first. Return ONLY JSON:\n"
+        + (f'Give every item "t": the one topic from this list that fits it best, exactly as '
+           f'written, or "" if none fits: {json.dumps(list(topics), ensure_ascii=False)}.\n'
+           if topics else "")
+        + "List every item, most important first. Return ONLY JSON:\n"
         '{"items": [{"i": <index>, "p": "first|today|later", "why": "...", '
-        '"same_as": <index, only for duplicates>, "cluster_title": "..., only on a lead"}]}\n\n'
+        + ('"t": "<topic>", ' if topics else "")
+        + '"same_as": <index, only for duplicates>, "cluster_title": "..., only on a lead"}]}\n\n'
         + catalogue
     )
 
@@ -94,13 +99,16 @@ def _root(idx, same_as) -> int:
     return cur
 
 
-def prioritize(items, cfg) -> list:
+def prioritize(items, cfg, topics=()) -> list:
     """Label `items` in place (see module doc) and return the list without
-    the duplicates folded into a cluster lead. No-op when disabled; returns
-    the items unlabeled and unclustered if Claude's answer can't be used."""
+    the duplicates folded into a cluster lead. With `topics` (the archive's
+    fixed categories) each item also gets `extra["topic"]`, one of them or "".
+    No-op when disabled; returns the items unlabeled and unclustered if
+    Claude's answer can't be used."""
     if not is_enabled(cfg) or not items:
         return items
-    data = claude_json(_prompt(items, cfg), max_tokens=min(5000, 300 + 80 * len(items)),
+    topics = list(topics or ())
+    data = claude_json(_prompt(items, cfg, topics), max_tokens=min(5000, 300 + 80 * len(items)),
                        context="priority", client_factory=lambda: _client())
     if data is None or not isinstance(data.get("items"), list):
         print("[priority] ranking failed; edition goes out unlabeled", flush=True)
@@ -152,6 +160,11 @@ def prioritize(items, cfg) -> list:
                     if str(rows[g].get("why") or "").strip()), "")
         if tier != "later" and why:
             item.extra["why"] = why
+        if topics:
+            by_key = {t.lower(): t for t in topics}
+            item.extra["topic"] = next(
+                (by_key[str(rows[g].get("t") or "").strip().lower()] for g in group
+                 if str(rows[g].get("t") or "").strip().lower() in by_key), "")
         if len(group) > 1:
             item.extra["also"] = [items[m] for m in groups[idx]]
             title = next((str(rows[g].get("cluster_title") or "").strip() for g in group

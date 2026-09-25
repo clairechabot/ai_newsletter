@@ -146,7 +146,19 @@ def _section_label(left, right) -> str:
             f'<td align="right" style="{_F}font-size:12px;color:{_P["muted"]};">{right}</td>'
             f'</tr></table></td></tr>')
 
-def _cover_masthead(title, date_label, order, n_skim, n_sources) -> str:
+def _archive_url(link) -> str:
+    return link.split("#")[0].rstrip("/") + "/archive.html" if link else ""
+
+def unsubscribe_link(value) -> str:
+    """The cover's Unsubscribe href. `sender` means a mailto: to the sending
+    account (EMAIL_SENDER), so the address never has to sit in config.yaml."""
+    value = (value or "").strip()
+    if value.lower() == "sender":
+        sender = (os.environ.get("EMAIL_SENDER") or "").strip()
+        return f"mailto:{sender}?subject=Unsubscribe" if sender else ""
+    return _safe_link(value)
+
+def _cover_masthead(title, date_label, order, n_skim, n_sources, link="") -> str:
     shape = []
     if order:
         minutes = sum(read_minutes(i) for i in order)
@@ -154,6 +166,9 @@ def _cover_masthead(title, date_label, order, n_skim, n_sources) -> str:
     if n_skim:
         shape.append(f'<b style="color:{_P["white"]};">{n_skim}</b> to skim')
     shape.append(_plural(n_sources, "source", "sources"))
+    if link:
+        shape.append(f'<a href="{escape(_archive_url(link), quote=True)}" style="color:{_P["orange"]};'
+                     f'text-decoration:underline;font-weight:bold;">Search the archive &rarr;</a>')
     return (f'<tr><td bgcolor="{_P["black"]}" style="background:{_P["black"]};'
             f'border-bottom:4px solid {_P["orange"]};padding:20px 22px;"><table {_T}><tr>'
             f'<td valign="bottom" style="{_F}font-size:28px;font-weight:bold;color:{_P["white"]};'
@@ -253,9 +268,8 @@ def _cover_footer(title, n_sources, org, link, unsubscribe, address) -> str:
     links = []
     if link:
         links.append(f'<a href="{escape(link, quote=True)}" {a}>Read on the web</a>')
-        links.append(f'<a href="{escape(link.rstrip("/") + "/archive.html", quote=True)}" {a}>'
-                     f'Search the archive</a>')
-    unsub = _safe_link(unsubscribe)
+        links.append(f'<a href="{escape(_archive_url(link), quote=True)}" {a}>Search the archive</a>')
+    unsub = unsubscribe_link(unsubscribe)
     if unsub:
         links.append(f'<a href="{escape(unsub, quote=True)}" {a}>Unsubscribe</a>')
     lines = [line] + ([" &middot; ".join(links)] if links else []) + (
@@ -287,7 +301,13 @@ def _cover_email(title, themes, *, greeting, edition_url, preheader, summary, or
                  f'bgcolor="{_P["orange"]}" style="background:{_P["orange"]};border-radius:4px;">'
                  f'<a href="{escape(link, quote=True)}" style="display:block;padding:14px 18px;{_F}'
                  f'font-size:15px;font-weight:bold;color:{_P["black"]};text-decoration:none;">'
-                 f'Open the full edition &rarr;</a></td></tr></table></td></tr>')
+                 f'Open the full edition &rarr;</a></td></tr></table></td></tr>'
+                 f'<tr><td style="padding:4px 0 8px 0;"><table {_T}><tr><td align="center" '
+                 f'bgcolor="{_P["white"]}" style="background:{_P["white"]};border:2px solid {_P["black"]};'
+                 f'border-radius:4px;"><a href="{escape(_archive_url(link), quote=True)}" '
+                 f'style="display:block;padding:12px 18px;{_F}font-size:15px;font-weight:bold;'
+                 f'color:{_P["black"]};text-decoration:none;">Search past editions in the Archive &rarr;'
+                 f'</a></td></tr></table></td></tr>')
     body += _cover_footer(title, n_sources, org, link, unsubscribe, address)
     return (
         '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
@@ -302,7 +322,7 @@ def _cover_email(title, themes, *, greeting, edition_url, preheader, summary, or
         '<td align="center" style="padding:24px 12px;">'
         '<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->'
         f'<table {_T} style="max-width:600px;">'
-        f'{_cover_masthead(title, date_label, order, n_skim, n_sources)}'
+        f'{_cover_masthead(title, date_label, order, n_skim, n_sources, link)}'
         f'<tr><td class="px" style="padding:0 22px 28px 22px;background:{_P["paper"]};">'
         f'<table {_T}>{body}</table></td></tr></table>'
         '<!--[if mso]></td></tr></table><![endif]--></td></tr></table></body></html>')

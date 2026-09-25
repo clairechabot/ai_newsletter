@@ -32,7 +32,7 @@ def run(cfg, history_path="history.json", now=None) -> None:
     add_images(selected, cfg.images)    # optional: preview image + read time per item
     # optional: labels read first / today / later and folds duplicate coverage
     # of one event into its lead story (the others ride along in extra["also"])
-    selected = prioritize(selected, cfg.priority)
+    selected = prioritize(selected, cfg.priority, topics=cfg.topics())
     themes = order_themes(group_into_themes(selected, cfg.voice))
     summary = summarize(themes, cfg.summary)  # optional: "The day in 30 seconds"
     greeting = compose_greeting(cfg.voice, themes, recent=hist.get("recent_greetings"))
@@ -49,7 +49,7 @@ def run(cfg, history_path="history.json", now=None) -> None:
                                  reading_images=cfg.web.get("reading_images", "first"),
                                  skim_expanded=bool(cfg.web.get("skim_expanded", False)))
         paths = save_edition(out_dir, page, now.strftime("%Y-%m-%d"), slot["key"])
-        build_archive_index(out_dir, site_title=cfg.title)
+        build_archive_index(out_dir, site_title=cfg.title, topics=cfg.topics())
         print(f"[pipeline] web edition -> {paths['edition']}", flush=True)
 
     must = reading_list(themes)

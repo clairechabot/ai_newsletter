@@ -63,6 +63,7 @@ sources:
 email:
   mode: cover              # triage email: day in 30 seconds, reading order, skim headlines + link to the web edition
   from_name: "The Edge"    # sender name shown in Gmail
+  unsubscribe: sender      # footer Unsubscribe = a mailto: to the sending account (kept in Secrets, not here)
 
 # Reading priority: labels every item "Read first", "Read today" or "Later"
 # for Khare, and puts a "Read first today" list at the top of each edition.
@@ -103,6 +104,19 @@ summary: { enabled: true }
 images: { enabled: true }
 
 web: { enabled: true, output_dir: "docs", edition_url: "https://clairechabot.github.io/ai_newsletter/" }
+
+# Fixed archive topics: every story gets one (in the priority call) so the
+# Archive can filter by category across days. Stories that fit none show as "Other".
+archive:
+  topics:
+    - "Frontier models"
+    - "Agents & engineering"
+    - "Governed AI"
+    - "AI in private capital"
+    - "AI in finance"
+    - "Regulation & policy"
+    - "Startups & funding"
+    - "Work & society"
 
 # Optional extensions (uncomment to enable — see config.example.yaml for docs):
 # voice:    { enabled: true, name: "Your editor's name", tone: "warm, cozy, slightly witty" }  # invent your own — see README

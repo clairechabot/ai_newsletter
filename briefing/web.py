@@ -42,6 +42,8 @@ from briefing.summary import ref_target
 
 _EDITION_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})-(.+)\.html$")
 _DATA_RE = re.compile(r'<script id="edition-data" type="application/json">(.*?)</script>', re.S)
+_SUMMARY_RE = re.compile(r'<script id="edition-summary" type="application/json">(.*?)</script>', re.S)
+OTHER_TOPIC = "Other"  # archive label for stories without a topic
 
 TAB_MAX = 20  # characters; long section names overflow the tab bar
 
@@ -127,8 +129,13 @@ _EDITION_CSS = css(
     ".tj:hover{color:$cobalt}"
     ".tj .ix{font:500 12px 'IBM Plex Mono',monospace;color:$orange;margin-right:7px;letter-spacing:0}"
     ".tj .n{font:500 11px 'IBM Plex Mono',monospace;color:$muted;margin-left:6px;letter-spacing:0}"
+    ".tright{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;padding:8px 0}"
+    ".abtn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;padding:6px 12px;"
+    "border:2px solid $black;border-radius:4px;font:700 11.5px 'IBM Plex Sans',sans-serif;"
+    "letter-spacing:.06em;text-transform:uppercase;color:$black;text-decoration:none}"
+    ".abtn:hover{background:$black;color:$white}"
     ".prog{display:flex;align-items:center;gap:10px;font:500 12px 'IBM Plex Mono',monospace;"
-    "color:$muted;padding:8px 0}"
+    "color:$muted}"
     ".prog b{color:$ink;font-weight:500}"
     ".track{display:block;width:96px;height:6px;background:$paper;border-radius:3px;overflow:hidden}"
     ".fill{display:block;height:100%;width:0;background:$orange;transition:width .25s ease}"
@@ -143,7 +150,7 @@ _EDITION_CSS = css(
     ".takeaways p{font:500 22px/1.32 Archivo,Arial,sans-serif;margin:0;text-wrap:pretty;"
     "letter-spacing:-.005em}"
     ".takeaways p b{font-weight:800}"
-    ".jump{display:inline-block;padding:6px 0 0;font:500 11.5px 'IBM Plex Mono',monospace;"
+    ".jump{display:inline-block;white-space:nowrap;padding:6px 0 0;font:500 11.5px 'IBM Plex Mono',monospace;"
     "letter-spacing:.06em;text-transform:uppercase;color:$cobalt;text-decoration:none}"
     ".jump:hover{text-decoration:underline}"
     ".budget{border:2px solid $black;border-radius:4px;padding:18px 20px 12px}"
@@ -164,7 +171,8 @@ _EDITION_CSS = css(
     ".num{font:900 40px/1 Archivo,Arial,sans-serif;font-stretch:112%;color:$orange;padding-top:2px}"
     ".item.today .num{color:$cobalt}.item.read .num{color:$muted}"
     ".item-body{display:grid;gap:9px;align-content:start;max-width:720px}"
-    ".meta .quiet{color:$muted}"
+    ".meta .quiet{color:$muted;white-space:nowrap}"
+    ".h span{white-space:nowrap}"
     ".item h3{font:700 25px/1.18 Archivo,Arial,sans-serif;margin:0;text-wrap:balance}"
     ".whybox{background:$orange_tint;padding:9px 12px;border-radius:2px;font-size:14.5px;line-height:1.45}"
     ".whybox b{display:block;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:.08em;"
@@ -186,8 +194,8 @@ _EDITION_CSS = css(
     "gap:8px 36px;align-items:start}"
     ".skim-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;"
     "padding:16px 0 8px;border-bottom:2px solid $black}"
-    ".skim-head h3{font:800 19px/1.2 Archivo,Arial,sans-serif;margin:0}"
-    ".skim-head span{font:12px 'IBM Plex Mono',monospace;color:$muted;white-space:nowrap}"
+    ".skim-head h3{flex:1 0 auto;font:800 19px/1.2 Archivo,Arial,sans-serif;margin:0}"
+    ".skim-head span{flex:none;font:12px 'IBM Plex Mono',monospace;color:$muted;white-space:nowrap}"
     ".srow{border-bottom:1px solid $rule}"
     ".stog{appearance:none;width:100%;text-align:left;background:none;border:0;cursor:pointer;"
     "padding:10px 0;display:grid;grid-template-columns:minmax(0,1fr) 16px;gap:10px;align-items:start;"
@@ -198,12 +206,23 @@ _EDITION_CSS = css(
     ".stog .sign{font:500 14px/1.3 'IBM Plex Mono',monospace;color:$muted}"
     ".sgist{padding:0 26px 12px 0;font-size:13.5px;line-height:1.5;color:#333333;display:grid;gap:6px}"
     ".sgist a{color:$cobalt;font-weight:500;justify-self:start}"
+    # Archive call-to-action after Skim.
+    ".acta{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 24px;align-items:center;"
+    "margin:0 0 48px;padding:22px 24px;border:2px solid $black;border-radius:4px;"
+    "text-decoration:none;color:$ink}"
+    ".acta:hover{background:$orange_tint}"
+    ".acta .k{display:block;font:800 12.5px Archivo,Arial,sans-serif;font-stretch:112%;"
+    "letter-spacing:.16em;text-transform:uppercase;margin-bottom:6px}"
+    ".acta .l{font:500 20px/1.3 Archivo,Arial,sans-serif}"
+    ".acta .b{background:$orange;color:$black;font:700 15px 'IBM Plex Sans',sans-serif;"
+    "padding:12px 18px;border-radius:4px;white-space:nowrap}"
     "@media (max-width:900px){.item{grid-template-columns:64px minmax(0,1fr)}"
     ".item-pic{grid-column:2;width:100%}.item-pic img{width:100%}}"
     "@media (max-width:760px){.sum-main{grid-column:auto}}"
-    "@media (max-width:640px){.tbar-in{padding:0 16px}.tjump{margin-left:-11px}"
+    "@media (max-width:640px){.h{flex-wrap:wrap;row-gap:4px}.tbar-in{padding:0 16px}.tjump{margin-left:-11px}"
     ".item{grid-template-columns:44px minmax(0,1fr);gap:4px 12px}.num{font-size:30px}"
-    ".item h3{font-size:21px}.takeaways p{font-size:19px}.takeaways li{grid-template-columns:28px minmax(0,1fr)}}"
+    ".item h3{font-size:21px}.takeaways p{font-size:19px}.acta{grid-template-columns:minmax(0,1fr)}"
+    ".acta .b{justify-self:start}.takeaways li{grid-template-columns:28px minmax(0,1fr)}}"
 )
 
 # Progressive enhancement only: without it every section is open and every
@@ -336,7 +355,8 @@ def _triage_bar(summary, order, n_skim) -> str:
     prog = (f'<div class="prog" hidden><span><b id="done">0</b> of {len(order)} read</span>'
             f'<span class="track"><span class="fill" id="fill"></span></span></div>' if order else "")
     return (f'<nav class="tbar" aria-label="Sections"><div class="tbar-in">'
-            f'<div class="tjump">{tabs}</div>{prog}</div></nav>')
+            f'<div class="tjump">{tabs}</div><div class="tright">'
+            f'<a class="abtn" href="archive.html">Search the archive →</a>{prog}</div></div></nav>')
 
 
 def _budget(order, n_skim, org) -> str:
@@ -458,7 +478,7 @@ def _edition_data(themes, edition_date, slot_key) -> list:
     """What the Archive needs from this edition, one row per story (a cluster's
     other sources ride along in its lead's `also`)."""
     order, _ = triage(themes)
-    in_order = {id(i) for i in order}
+    in_order = {id(i): n for n, i in enumerate(order, 1)}
     rows = []
     for theme in themes:
         for i in theme["items"]:
@@ -471,6 +491,8 @@ def _edition_data(themes, edition_date, slot_key) -> list:
                 "section": theme["name"], "tab": theme.get("tab") or tab_label(theme["name"]),
                 "minutes": read_minutes(i) if id(i) in in_order else (
                     minutes if isinstance(minutes, int) else None),
+                "n": in_order.get(id(i)),  # place in the day's reading order
+                "topic": i.extra.get("topic") or "",
                 "cluster": i.extra.get("cluster_title") or "",
                 "also": [{"title": a.title, "url": _safe_url(a.url), "source": a.source}
                          for a in i.extra.get("also") or []],
@@ -524,9 +546,14 @@ def build_web_edition(title, themes, *, greeting="", edition_label="", date_str=
     body = (f'<div class="wrap">{dateline}{greet_html}'
             f'{_summary_section(summary, order, skim, org)}'
             f'{_order_section(order, themes, org, reading_images, read_key)}'
-            f'{_skim_section(skim, skim_expanded)}</div>')
+            f'{_skim_section(skim, skim_expanded)}'
+            f'<a class="acta" href="archive.html"><span><span class="k">Looking for something older?</span>'
+            f'<span class="l">Search every story {escape(title)} has sent, by topic, priority or source.'
+            f'</span></span><span class="b">Open the archive →</span></a></div>')
     data = (f'<script id="edition-data" type="application/json">'
-            f'{_json_for_html(_edition_data(themes, edition_date, slot_key))}</script>')
+            f'{_json_for_html(_edition_data(themes, edition_date, slot_key))}</script>'
+            f'<script id="edition-summary" type="application/json">'
+            f'{_json_for_html([{"lead": x["lead"], "text": x["text"]} for x in summary])}</script>')
     script = data + f"<script>{_EDITION_JS}</script>"
     page_title = f"{title} — {edition_label}" if edition_label else title
     return _shell(title, page_title, body, _EDITION_CSS, script, "today",
@@ -557,13 +584,19 @@ def _list_editions(out_dir) -> list:
     return found
 
 
-def _read_edition_data(path) -> list:
-    """Stories embedded in a saved edition, or [] for pages without data."""
+def _read_script(path, pattern, default):
     try:
         with open(path, "r", encoding="utf-8") as fh:
-            m = _DATA_RE.search(fh.read())
-        rows = json.loads(m.group(1)) if m else []
+            m = pattern.search(fh.read())
+        return json.loads(m.group(1)) if m else default
     except (OSError, ValueError):
+        return default
+
+
+def _read_edition_data(path) -> list:
+    """Stories embedded in a saved edition, or [] for pages without data."""
+    rows = _read_script(path, _DATA_RE, [])
+    if not isinstance(rows, list):
         return []
     return [r for r in rows if isinstance(r, dict) and r.get("url") and r.get("title")]
 
@@ -583,128 +616,230 @@ def collect_archive(out_dir) -> list:
     return rows
 
 
+def collect_takes(out_dir) -> dict:
+    """{date: "Lead. Text"}: each day's first summary takeaway (the Archive's
+    "That day" line), from the latest edition of that day that has one.
+    Editions saved before summaries existed simply have none."""
+    takes = {}
+    for date_str, _slot, fname in _list_editions(out_dir):  # newest first
+        if date_str in takes:
+            continue
+        summary = _read_script(os.path.join(out_dir, "editions", fname), _SUMMARY_RE, [])
+        first = summary[0] if isinstance(summary, list) and summary else None
+        if isinstance(first, dict) and first.get("text"):
+            takes[date_str] = " ".join(x for x in (str(first.get("lead") or "").strip(),
+                                                   str(first["text"]).strip()) if x)
+    return takes
+
+
 _ARCHIVE_CSS = css(
+    "mark{background:#FFD9C4;color:inherit;padding:0}"
     ".a-head{padding:26px 0 6px;display:flex;flex-wrap:wrap;align-items:flex-end;"
     "justify-content:space-between;gap:8px 20px}"
     ".a-head h1{font:900 40px/1 Archivo,Arial,sans-serif;font-stretch:125%;margin:0;letter-spacing:.01em}"
     ".stats{font:12px 'IBM Plex Mono',monospace;color:$muted;letter-spacing:.04em}"
-    ".tools{display:grid;gap:12px;margin:16px 0 8px;padding:16px;background:$paper;border-radius:4px}"
-    ".search{position:relative}"
-    ".search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:$muted}"
-    ".search input{width:100%;font:16px 'IBM Plex Sans',sans-serif;padding:11px 14px 11px 40px;"
-    "border:2px solid $black;border-radius:4px;background:$white;color:$ink}"
-    ".row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}"
-    ".row .lbl{font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;"
-    "color:$muted;min-width:64px}"
-    ".row select{font:14px 'IBM Plex Sans',sans-serif;padding:6px 10px;border:1px solid $rule;"
-    "border-radius:999px;background:$white;color:$ink;max-width:100%}"
-    ".count{display:flex;justify-content:space-between;align-items:center;"
-    "font:12px 'IBM Plex Mono',monospace;color:$muted;margin:14px 0 2px}"
+    # Sticky tools: search, priority control, match count.
+    ".tools{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.96);"
+    "-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:14px 0 12px;"
+    "border-bottom:1px solid $rule;display:grid;gap:10px}"
+    ".search{position:relative;display:block}"
+    ".search span{position:absolute;left:14px;top:50%;transform:translateY(-50%);"
+    "font:500 12px 'IBM Plex Mono',monospace;color:$muted;letter-spacing:.06em;pointer-events:none}"
+    ".search input{width:100%;font:16px 'IBM Plex Sans',sans-serif;padding:12px 14px 12px 84px;"
+    "border:2px solid $black;border-radius:4px;background:$white;color:$ink;outline-color:$orange}"
+    ".search input::placeholder{color:#8A8A8A}"
+    ".trow{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;justify-content:space-between}"
+    ".seg{display:flex;flex-wrap:wrap;border:1px solid $rule;border-radius:999px;padding:2px}"
+    ".seg button{appearance:none;cursor:pointer;white-space:nowrap;font:500 12.5px 'IBM Plex Sans',sans-serif;"
+    "padding:5px 12px;border:0;border-radius:999px;background:transparent;color:$ink}"
+    ".seg button[aria-pressed=true]{background:$black;color:$white}"
+    ".seg i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px}"
+    ".seg em{font:400 11px 'IBM Plex Mono',monospace;font-style:normal;margin-left:5px;opacity:.7}"
+    ".dot-first{background:$orange}.dot-today{background:$cobalt}.dot-later{background:#BDBDBD}"
+    ".count{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;"
+    "font:12px 'IBM Plex Mono',monospace;color:$muted}"
     ".linkbtn{appearance:none;background:none;border:0;cursor:pointer;color:$cobalt;"
     "font:500 13px 'IBM Plex Sans',sans-serif;text-decoration:underline;padding:4px}"
-    "details.wk{border-bottom:1px solid $rule}"
-    "details.wk>summary{list-style:none;display:grid;grid-template-columns:18px minmax(0,1fr) auto;"
-    "gap:12px;align-items:center;padding:14px 0;cursor:pointer}"
-    "details.wk>summary::-webkit-details-marker{display:none}"
-    ".chev{width:18px;height:18px;transition:transform .18s ease}"
-    "details[open]>summary .chev{transform:rotate(90deg)}"
-    ".wk-name{font:800 19px/1.2 Archivo,Arial,sans-serif}"
-    ".wk-meta{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;"
-    "font:12px 'IBM Plex Mono',monospace;color:$muted;margin-top:3px}"
-    ".thumbs{display:flex;padding-left:8px}"
-    ".thumbs img{width:42px;height:42px;object-fit:cover;border-radius:3px;border:2px solid $white;"
-    "margin-left:-10px;box-shadow:0 0 0 1px $rule}"
-    "details[open]>summary .thumbs{display:none}"
-    ".grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:16px;"
-    "padding:4px 0 22px}"
-    ".acard{display:flex;flex-direction:column;border:1px solid $rule;border-radius:4px;overflow:hidden;"
-    "background:$white;text-decoration:none;color:$ink}"
-    ".acard:hover h4{color:$cobalt;text-decoration:underline}"
-    ".acard img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block}"
-    ".acard .body{padding:10px 12px 12px;display:grid;gap:6px;align-content:start}"
-    ".acard h4{font:700 15px/1.25 Archivo,Arial,sans-serif;margin:0}"
-    ".acard .tag{font:11px 'IBM Plex Mono',monospace;color:$muted}"
-    ".acard .why{font-size:12.5px;color:#333}"
-    "details.more{margin:-6px 0 20px}"
-    "details.more>summary{list-style:none;cursor:pointer;display:inline-flex;gap:8px;align-items:center;"
-    "font:500 13px 'IBM Plex Sans',sans-serif;color:$cobalt;padding:6px 0}"
-    "details.more>summary::-webkit-details-marker{display:none}"
-    "details.more>summary .chev{width:14px;height:14px}"
-    ".mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:0 24px;margin-top:6px}"
-    ".mrow{display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;align-items:center;padding:8px 0;"
-    "border-top:1px solid $rule;text-decoration:none;color:$ink}"
-    ".mrow.noimg{grid-template-columns:minmax(0,1fr)}"
-    ".mrow img{width:48px;height:36px;object-fit:cover;border-radius:2px}"
-    ".mrow b{font:600 13.5px/1.3 Archivo,Arial,sans-serif;display:block}"
-    ".mrow:hover b{color:$cobalt;text-decoration:underline}"
+    # Topics + source beside the results.
+    ".abody{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr);gap:28px 40px;"
+    "padding:22px 0 48px;align-items:start}"
+    ".aside{display:grid;gap:26px;position:sticky;top:130px}"
+    ".ah{font:800 12.5px Archivo,Arial,sans-serif;font-stretch:112%;letter-spacing:.16em;"
+    "text-transform:uppercase;padding-bottom:8px;border-bottom:2px solid $black;margin:0}"
+    ".topic{appearance:none;width:100%;text-align:left;cursor:pointer;background:transparent;border:0;"
+    "border-bottom:1px solid $rule;padding:9px 8px;display:flex;justify-content:space-between;gap:10px;"
+    "align-items:baseline;color:$ink;font:400 14px 'IBM Plex Sans',sans-serif}"
+    ".topic:hover{color:$cobalt}"
+    ".topic em{font:11px 'IBM Plex Mono',monospace;font-style:normal;color:$muted}"
+    ".topic.zero{color:#8A8A8A}"
+    ".topic[aria-pressed=true]{background:$orange_tint;font-weight:700;color:$black}"
+    ".topic[aria-pressed=true] em{color:#8A3207}"
+    ".aside select{width:100%;margin-top:10px;font:14px 'IBM Plex Sans',sans-serif;padding:7px 10px;"
+    "border:1px solid $rule;border-radius:4px;background:$white;color:$ink}"
+    # Results, grouped by day.
+    ".day{padding-bottom:18px}"
+    ".dh{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px;"
+    "padding:10px 0 8px;border-bottom:2px solid $black}"
+    ".dh h2{flex:1 0 auto;font:800 21px/1.2 Archivo,Arial,sans-serif;margin:0}"
+    ".dh span{flex:none;font:12px 'IBM Plex Mono',monospace;color:$muted;white-space:nowrap}"
+    ".take{margin:12px 0 4px;font:500 16px/1.4 Archivo,Arial,sans-serif;text-wrap:pretty}"
+    ".take b{font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;"
+    "color:$orange;margin-right:8px}"
+    ".arow{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:4px 14px;padding:14px 0;"
+    "border-bottom:1px solid $rule}"
+    ".anum{font:900 20px/1.2 Archivo,Arial,sans-serif;color:#BDBDBD}"
+    ".anum.first{color:$orange}.anum.today{color:$cobalt}"
+    ".abody-in{display:grid;gap:5px;align-content:start}"
+    ".meta span{white-space:nowrap}.meta .quiet{color:$muted}"
+    ".arow h3{font:700 17px/1.25 Archivo,Arial,sans-serif;margin:0;text-wrap:balance}"
+    ".awhy{font-size:13.5px;line-height:1.45;color:#333333}"
+    ".awhy b{font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;"
+    "color:#8A3207;margin-right:6px}"
+    ".aalso{font-size:12.5px;color:$muted}"
+    ".ath{display:block;width:96px;height:64px;object-fit:cover;border-radius:3px;border:1px solid $rule;"
+    "background:$paper}"
+    ".more{appearance:none;background:none;border:0;cursor:pointer;padding:12px 0 4px;"
+    "font:500 13px 'IBM Plex Sans',sans-serif;color:$cobalt;display:flex;gap:8px;align-items:center}"
+    ".more span{font:500 14px 'IBM Plex Mono',monospace}"
+    ".mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:0 28px}"
+    ".mrow{display:block;padding:9px 0;border-top:1px solid $rule;text-decoration:none;color:$ink}"
+    ".mrow:hover{color:$cobalt}"
+    ".mrow b{display:block;font:600 14px/1.3 Archivo,Arial,sans-serif}"
     ".mrow span{font:11px 'IBM Plex Mono',monospace;color:$muted}"
-    ".empty{padding:28px 0;text-align:center;color:$muted}"
+    ".empty{padding:40px 0;text-align:center;color:$muted;margin:0}"
     ".editions{margin-top:36px;padding-top:18px;border-top:2px solid $black}"
     ".editions ul{list-style:none;margin:8px 0 0;padding:0;display:grid;"
     "grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:4px 20px}"
     ".editions li{padding:6px 0;border-bottom:1px solid $rule;font-size:14px}"
     ".editions a{color:$cobalt;text-decoration:none}.editions a:hover{text-decoration:underline}"
+    "@media (max-width:700px){.abody{grid-template-columns:minmax(0,1fr)}.aside{position:static}}"
+    "@media (max-width:640px){.a-head h1{font-size:32px}.arow{grid-template-columns:24px minmax(0,1fr)}"
+    ".ath{grid-column:2}}"
 )
 
 _ARCHIVE_JS = r"""
 (function(){
-  var all=JSON.parse(document.getElementById('archive-data').textContent);
-  var LABEL={first:'Read first',today:'Read today',later:'Later'};
+  function json(id,d){try{return JSON.parse(document.getElementById(id).textContent)||d;}catch(e){return d;}}
+  var all=json('archive-data',[]), takes=json('archive-takes',{});
+  var OTHER=document.getElementById('topics').getAttribute('data-other');
+  var LABEL={first:'Read first',today:'Read today',later:'Later'}, RANK={first:0,today:1,later:2};
   var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var DOW=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function safe(u){return /^https?:\/\//.test(u||'')?u:'#';}
-  function day(d){return new Date(d+'T12:00:00Z');}
-  function fmt(d){var x=day(d);return x.getUTCDate()+' '+MON[x.getUTCMonth()];}
-  function monday(d){var x=day(d),wd=(x.getUTCDay()+6)%7;x.setUTCDate(x.getUTCDate()-wd);return x.toISOString().slice(0,10);}
-  function img(i,cls){return i.image?'<img class="'+(cls||'')+'" src="'+esc(i.image)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">':'';}
-  function badge(p){return p&&LABEL[p]?'<span class="badge badge-'+p+'">'+LABEL[p]+'</span>':'';}
-  var q=document.getElementById('q'), prio=document.getElementById('prio'), src=document.getElementById('src');
-  var clear=document.getElementById('clear'), count=document.getElementById('count'), box=document.getElementById('groups');
-  var st={q:'',p:'all',s:'all'};
+  function hl(t,q){
+    t=String(t||''); if(!q) return esc(t);
+    var lo=t.toLowerCase(), out='', k=0, j;
+    if(lo.length!==t.length) return esc(t);
+    while((j=lo.indexOf(q,k))>=0){out+=esc(t.slice(k,j))+'<mark>'+esc(t.slice(j,j+q.length))+'</mark>';k=j+q.length;}
+    return out+esc(t.slice(k));
+  }
+  function day(d){var x=new Date(d+'T12:00:00Z');return DOW[x.getUTCDay()]+' '+x.getUTCDate()+' '+MON[x.getUTCMonth()];}
+  all.forEach(function(i,n){
+    i.p=LABEL[i.p]?i.p:'later'; i.tp=i.topic||OTHER; i.t=i.cluster||i.title; i._n=n;
+    i.alsoNames=(i.also||[]).map(function(a){return typeof a==='string'?a:(a&&a.source)||'';}).filter(Boolean);
+  });
+  // Reading-order numbers for editions saved before rows carried them.
+  var byDate={}; all.forEach(function(i){(byDate[i.date]=byDate[i.date]||[]).push(i);});
+  Object.keys(byDate).forEach(function(d){
+    var top=byDate[d].filter(function(i){return i.p!=='later';}), c=0;
+    if(top.some(function(i){return typeof i.n!=='number';}))
+      top.sort(function(a,b){return RANK[a.p]-RANK[b.p]||a._n-b._n;}).forEach(function(i){i.n=++c;});
+  });
+  var latest=all.length?all.map(function(i){return i.date;}).sort().slice(-1)[0]:null;
+  var q=document.getElementById('q'), src=document.getElementById('src'), box=document.getElementById('groups');
+  var count=document.getElementById('count'), clear=document.getElementById('clear');
+  var tiers=[].slice.call(document.querySelectorAll('#tiers button'));
+  var topics=[].slice.call(document.querySelectorAll('#topics .topic'));
+  var st={q:'',tier:'all',topic:'',src:'all'}, open={};
   var sources=[]; all.forEach(function(i){if(sources.indexOf(i.source)<0)sources.push(i.source);}); sources.sort();
   src.innerHTML='<option value="all">All '+sources.length+' sources</option>'+sources.map(function(s){return '<option value="'+esc(s)+'">'+esc(s)+'</option>';}).join('');
-  var latest=all.length?all.map(function(i){return i.date;}).sort().slice(-1)[0]:null;
-  var thisWeek=latest?monday(latest):null, openWeeks={}; if(thisWeek) openWeeks[thisWeek]=true;
-  var chev='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
-  function weekLabel(m){
-    var end=day(m); end.setUTCDate(end.getUTCDate()+6);
-    var range=fmt(m)+' \u2013 '+fmt(end.toISOString().slice(0,10));
-    var diff=thisWeek?Math.round((day(thisWeek)-day(m))/864e5/7):9;
-    return [diff===0?'This week':diff===1?'Last week':'Week of '+fmt(m),range];
+  try{var h=new URLSearchParams(location.hash.slice(1));
+    st.q=h.get('q')||''; st.tier=LABEL[h.get('tier')]?h.get('tier'):'all'; st.topic=h.get('topic')||'';
+    st.src=sources.indexOf(h.get('source'))>=0?h.get('source'):'all';}catch(e){}
+  q.value=st.q; src.value=st.src;
+  function sync(){
+    var h=[]; if(st.q) h.push('q='+encodeURIComponent(st.q)); if(st.tier!=='all') h.push('tier='+st.tier);
+    if(st.topic) h.push('topic='+encodeURIComponent(st.topic)); if(st.src!=='all') h.push('source='+encodeURIComponent(st.src));
+    try{history.replaceState(null,'',h.length?'#'+h.join('&'):location.pathname+location.search);}catch(e){}
+  }
+  function badge(p){return '<span class="badge badge-'+p+'">'+LABEL[p]+'</span>';}
+  function row(i,ql){
+    var num=i.p==='later'?'·':String(i.n||'');
+    var img=i.image&&i.p!=='later'?'<img class="ath" src="'+esc(i.image)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">':'';
+    return '<article class="arow"><span class="anum '+i.p+'">'+num+'</span><div class="abody-in">'
+      +'<div class="meta">'+badge(i.p)+'<span>'+esc(i.source)+'</span><span class="quiet">'+esc(i.tp)+'</span></div>'
+      +'<h3><a class="t" href="'+esc(safe(i.url))+'" target="_blank" rel="noopener">'+hl(i.t,ql)+'</a></h3>'
+      +(i.why?'<div class="awhy"><b>Why</b>'+esc(i.why)+'</div>':'')
+      +(i.alsoNames.length?'<div class="aalso">Also covered by '+esc(i.alsoNames.join(' · '))+'</div>':'')
+      +'</div>'+img+'</article>';
   }
   function render(){
-    [].slice.call(prio.querySelectorAll('.chip')).forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-v')===st.p));});
-    var hits=all.filter(function(i){return (st.p==='all'||i.p===st.p)&&(st.s==='all'||i.source===st.s)&&(!st.q||(i.title+' '+i.source+' '+i.why+' '+i.summary+' '+i.section).toLowerCase().indexOf(st.q)>=0);});
-    var filtered=!!(st.q||st.p!=='all'||st.s!=='all');
+    var ql=st.q.trim().toLowerCase();
+    function match(i){return !ql||(i.t+' '+i.title+' '+i.source+' '+(i.why||'')+' '+(i.summary||'')+' '+i.tp).toLowerCase().indexOf(ql)>=0;}
+    var base=all.filter(function(i){return match(i)&&(st.src==='all'||i.source===st.src);});
+    function inTier(i,t){return t==='all'||i.p===t;}
+    var hits=base.filter(function(i){return inTier(i,st.tier)&&(!st.topic||i.tp===st.topic);});
+    var filtered=!!(ql||st.tier!=='all'||st.topic||st.src!=='all');
+    tiers.forEach(function(b){var k=b.getAttribute('data-v');
+      b.setAttribute('aria-pressed',String(k===st.tier));
+      b.querySelector('em').textContent=base.filter(function(i){return inTier(i,k)&&(!st.topic||i.tp===st.topic);}).length;});
+    topics.forEach(function(b){var k=b.getAttribute('data-k');
+      var n=base.filter(function(i){return inTier(i,st.tier)&&(!k||i.tp===k);}).length;
+      b.setAttribute('aria-pressed',String(k===st.topic)); b.classList.toggle('zero',!n);
+      b.querySelector('em').textContent=n;});
     count.textContent=filtered?hits.length+' of '+all.length+' stories match':all.length+' stories';
     clear.hidden=!filtered;
     var groups={}, order=[];
-    hits.forEach(function(i){var m=monday(i.date); if(!groups[m]){groups[m]=[];order.push(m);} groups[m].push(i);});
+    hits.forEach(function(i){if(!groups[i.date]){groups[i.date]=[];order.push(i.date);} groups[i.date].push(i);});
     order.sort().reverse();
-    box.innerHTML=order.length?order.map(function(m){
-      var list=groups[m].slice().sort(function(a,b){return b.date<a.date?-1:b.date>a.date?1:0;});
-      var wl=weekLabel(m), f=list.filter(function(i){return i.p==='first';}).length;
-      var top=filtered?list:list.filter(function(i){return i.p==='first'||i.p==='today';});
-      var rest=filtered?[]:list.filter(function(i){return i.p!=='first'&&i.p!=='today';});
-      var cards=top.map(function(i){return '<a class="acard" href="'+esc(safe(i.url))+'" target="_blank" rel="noopener">'+img(i)+'<div class="body"><div class="meta">'+badge(i.p)+'<span>'+esc(i.source)+'</span></div><h4>'+esc(i.title)+'</h4>'+(i.p==='first'&&i.why?'<div class="why">'+esc(i.why)+'</div>':'')+'<div class="tag">'+fmt(i.date)+' \u00b7 '+esc(i.tab||i.section)+'</div></div></a>';}).join('');
-      var more=rest.length?'<details class="more"><summary>'+chev+'Show '+rest.length+' more '+(rest.length===1?'story':'stories')+'</summary><div class="mlist">'+rest.map(function(i){return '<a class="mrow'+(i.image?'':' noimg')+'" href="'+esc(safe(i.url))+'" target="_blank" rel="noopener">'+img(i)+'<div><b>'+esc(i.title)+'</b><span>'+esc(i.source)+' \u00b7 '+fmt(i.date)+'</span></div></a>';}).join('')+'</div></details>':'';
-      var open=filtered||openWeeks[m];
-      return '<details class="wk" data-m="'+m+'"'+(open?' open':'')+'><summary>'+chev+'<div><div class="wk-name">'+wl[0]+'</div><div class="wk-meta"><span>'+wl[1]+'</span><span>'+list.length+' stories</span>'+(f?'<span><i class="dot first"></i>'+f+' read first</span>':'')+'</div></div><div class="thumbs">'+list.slice(0,4).map(function(i){return img(i);}).join('')+'</div></summary>'+(cards?'<div class="grid">'+cards+'</div>':'')+more+'</details>';
+    box.innerHTML=order.length?order.map(function(d){
+      var list=groups[d].slice().sort(function(a,b){return RANK[a.p]-RANK[b.p]||(a.n||99)-(b.n||99)||a._n-b._n;});
+      var top=filtered?list:list.filter(function(i){return i.p!=='later';});
+      var rest=filtered?[]:list.filter(function(i){return i.p==='later';});
+      var f=list.filter(function(i){return i.p==='first';}).length;
+      var take=!filtered&&takes[d]?'<p class="take"><b>That day</b>'+esc(takes[d])+'</p>':'';
+      var more=rest.length?'<button class="more" type="button" data-d="'+d+'" aria-expanded="'+(open[d]?'true':'false')+'"><span>'+(open[d]?'−':'+')+'</span>'+(open[d]?'Hide ':'Show ')+rest.length+' more from that day</button>'
+        +(open[d]?'<div class="mlist">'+rest.map(function(i){return '<a class="mrow" href="'+esc(safe(i.url))+'" target="_blank" rel="noopener"><b>'+esc(i.t)+'</b><span>'+esc(i.source)+' · '+esc(i.tp)+'</span></a>';}).join('')+'</div>':''):'';
+      return '<section class="day"><div class="dh"><h2>'+day(d)+(d===latest?' · latest':'')+'</h2><span>'
+        +list.length+(filtered?' matching':' stories')+(f?' · '+f+' read first':'')+'</span></div>'
+        +take+top.map(function(i){return row(i,ql);}).join('')+more+'</section>';
     }).join(''):'<p class="empty">'+(all.length?'No stories match. Try a shorter search or clear the filters.':'No stories yet. The first edition fills this in.')+'</p>';
-    [].slice.call(box.querySelectorAll('details.wk')).forEach(function(d){d.addEventListener('toggle',function(){if(!filtered){if(d.open)openWeeks[d.getAttribute('data-m')]=true;else delete openWeeks[d.getAttribute('data-m')];}});});
+    sync();
   }
-  q.addEventListener('input',function(){st.q=q.value.trim().toLowerCase();render();});
-  [].slice.call(prio.querySelectorAll('.chip')).forEach(function(b){b.addEventListener('click',function(){st.p=b.getAttribute('data-v');render();});});
-  src.addEventListener('change',function(){st.s=src.value;render();});
-  clear.addEventListener('click',function(){st={q:'',p:'all',s:'all'};q.value='';src.value='all';render();});
+  q.addEventListener('input',function(){st.q=q.value;render();});
+  tiers.forEach(function(b){b.addEventListener('click',function(){st.tier=b.getAttribute('data-v');render();});});
+  topics.forEach(function(b){b.addEventListener('click',function(){var k=b.getAttribute('data-k');st.topic=(k&&st.topic===k)?'':k;render();});});
+  src.addEventListener('change',function(){st.src=src.value;render();});
+  clear.addEventListener('click',function(){st={q:'',tier:'all',topic:'',src:'all'};q.value='';src.value='all';render();});
+  box.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.more'); if(!b) return;
+    var d=b.getAttribute('data-d'); open[d]=!open[d]; render();});
   render();
 })();
 """
 
 
-def build_archive_index(out_dir, site_title="The Archive") -> str:
+def archive_topics(rows, topics=None) -> list:
+    """The archive's topic list: the configured `topics`, then any other topic
+    found in saved rows, then "Other" when a story has none."""
+    out = [t for t in (topics or []) if t]
+    known = {t.lower() for t in out}
+    for r in rows:
+        t = str(r.get("topic") or "").strip()
+        if t and t.lower() not in known:
+            known.add(t.lower())
+            out.append(t)
+    if any(not str(r.get("topic") or "").strip() for r in rows) or not out:
+        out.append(OTHER_TOPIC)
+    return out
+
+
+def build_archive_index(out_dir, site_title="The Archive", topics=None) -> str:
     """(Re)build <out_dir>/archive.html from the saved editions and return it:
-    every story ever sent, searchable and filterable, plus a list of editions."""
+    every story ever sent, grouped by day, searchable and filterable by
+    priority, topic and source, plus a list of editions. `topics` is the
+    fixed category list (config `archive.topics`); stories without one show
+    under "Other"."""
     rows = collect_archive(out_dir)
     editions = _list_editions(out_dir)
     dates = sorted({r["date"] for r in rows})
@@ -712,26 +847,37 @@ def build_archive_index(out_dir, site_title="The Archive") -> str:
              f'{escape(datetime.strptime(dates[0], "%Y-%m-%d").strftime("%d %b").lstrip("0"))} – '
              f'{escape(datetime.strptime(dates[-1], "%Y-%m-%d").strftime("%d %b %Y").lstrip("0"))}'
              if dates else f'{len(editions)} editions')
-    chips = "".join(
-        f'<button class="chip" type="button" data-v="{k}" aria-pressed="{"true" if k == "all" else "false"}">'
-        f'{"All" if k == "all" else escape(LABELS[k])}</button>' for k in ("all",) + TIERS)
+    tiers = "".join(
+        f'<button type="button" data-v="{k}" aria-pressed="{"true" if k == "all" else "false"}">'
+        + ("" if k == "all" else f'<i class="dot-{k}"></i>')
+        + f'{"All" if k == "all" else escape(LABELS[k])}<em></em></button>' for k in ("all",) + TIERS)
+    topic_list = archive_topics(rows, topics)
+    topic_btns = "".join(
+        f'<button class="topic" type="button" data-k="{escape(k, quote=True)}" '
+        f'aria-pressed="{"true" if not k else "false"}"><span>{escape(k or "All topics")}</span>'
+        f'<em></em></button>' for k in [""] + topic_list)
     ed_rows = "".join(
         f'<li><a href="editions/{escape(fname, quote=True)}">'
         f'{escape(date_str)} · {escape(slot.replace("-", " ").title())}</a></li>'
         for date_str, slot, fname in editions) or "<li>No past editions yet.</li>"
     body = (
         f'<div class="wrap"><div class="a-head"><h1>Archive</h1><div class="stats">{stats}</div></div>'
-        '<div class="tools"><label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-        'stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
-        '<input id="q" type="search" placeholder="Search headlines, sources and why lines" '
+        '<div class="tools"><label class="search"><span>SEARCH</span>'
+        '<input id="q" type="search" placeholder="Headlines, companies, why-it-matters lines" '
         'aria-label="Search the archive"></label>'
-        f'<div class="row"><span class="lbl">Priority</span><div class="chips" id="prio">{chips}</div></div>'
-        '<div class="row"><span class="lbl">Source</span><select id="src" aria-label="Filter by source"></select></div></div>'
-        '<div class="count"><span id="count"></span><button class="linkbtn" id="clear" type="button" hidden>Clear filters</button></div>'
-        '<div id="groups"></div>'
-        f'<section class="editions"><h2 class="h">Editions <span>{len(editions)}</span></h2><ul>{ed_rows}</ul></section>'
-        '</div>')
+        f'<div class="trow"><div class="seg" id="tiers" role="group" aria-label="Priority">{tiers}</div>'
+        '<div class="count"><span id="count"></span>'
+        '<button class="linkbtn" id="clear" type="button" hidden>Clear filters</button></div></div></div>'
+        '<div class="abody"><aside class="aside"><div id="topics" '
+        f'data-other="{escape(OTHER_TOPIC, quote=True)}"><h2 class="ah">Topics</h2>{topic_btns}</div>'
+        '<div><h2 class="ah">Source</h2><select id="src" aria-label="Filter by source"></select></div>'
+        '</aside><div><div id="groups"><noscript><p class="empty">The archive needs JavaScript to '
+        'search; every edition is linked below.</p></noscript></div>'
+        f'<section class="editions"><h2 class="h">Editions <span>{len(editions)}</span></h2>'
+        f'<ul>{ed_rows}</ul></section></div></div></div>')
     script = (f'<script id="archive-data" type="application/json">{_json_for_html(rows)}</script>'
+              f'<script id="archive-takes" type="application/json">'
+              f'{_json_for_html(collect_takes(out_dir))}</script>'
               f'<script>{_ARCHIVE_JS}</script>')
     html = _shell(site_title, f"{site_title} — Archive", body, _ARCHIVE_CSS, script, "archive")
     os.makedirs(out_dir, exist_ok=True)

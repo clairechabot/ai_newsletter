@@ -289,3 +289,23 @@ def test_gmail_app_password_error_gets_a_hint(monkeypatch):
         with pytest.raises(RuntimeError) as err:
             check_login()
     assert "App Password" in str(err.value) and "apppasswords" in str(err.value)
+
+
+def test_cover_links_the_archive_twice():
+    html = build_html_email("The Edge", _triage_themes(), edition_url="https://site/ed/", cover=True)
+    body = html.split("</head>")[1]
+    masthead = body.split("The day in 30 seconds")[0] if "The day in 30" in body else body.split("Your reading order")[0]
+    assert 'href="https://site/ed/archive.html"' in masthead and "Search the archive &rarr;" in masthead
+    assert "Search past editions in the Archive &rarr;" in body
+    assert body.index("Open the full edition") < body.index("Search past editions")
+    assert body.count('href="https://site/ed/archive.html"') == 3  # masthead, button, footer
+
+def test_unsubscribe_sender_uses_the_sending_account(monkeypatch):
+    from briefing.email import unsubscribe_link
+    monkeypatch.setenv("EMAIL_SENDER", "edge@x.com")
+    assert unsubscribe_link("sender") == "mailto:edge@x.com?subject=Unsubscribe"
+    html = build_html_email("E", _triage_themes(), edition_url="https://s/", cover=True, unsubscribe="sender")
+    assert 'href="mailto:edge@x.com?subject=Unsubscribe"' in html and ">Unsubscribe</a>" in html
+    monkeypatch.delenv("EMAIL_SENDER")
+    assert unsubscribe_link("sender") == "" and unsubscribe_link("javascript:x") == ""
+    assert unsubscribe_link("https://x/unsub") == "https://x/unsub"
