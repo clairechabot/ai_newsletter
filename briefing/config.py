@@ -43,6 +43,7 @@ class Config:
     email_from_name: str = ""                        # inbox sender name; "" = account name
     email_unsubscribe: str = ""                      # cover footer link (URL or mailto:); "" = none
     email_address: str = ""                          # cover footer postal line; "" = none
+    email_feedback: str = ""                         # "Useful / Not for us" mailto target; "" = off
 
     def topics(self) -> list:
         """Fixed archive topics: `archive.topics`, else short labels derived
@@ -97,4 +98,5 @@ def load_config(path: str) -> Config:
         email_from_name=str(email.get("from_name", "") or ""),
         email_unsubscribe=str(email.get("unsubscribe", "") or ""),
         email_address=str(email.get("address", "") or ""),
+        email_feedback=str(email.get("feedback", "") or ""),
     )

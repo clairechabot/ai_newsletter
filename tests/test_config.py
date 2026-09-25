@@ -91,6 +91,7 @@ def test_summary_and_cover_footer_default_off(tmp_path):
     p.write_text(base)
     cfg = load_config(str(p))
     assert cfg.summary == {} and cfg.email_unsubscribe == "" and cfg.email_address == ""
+    assert cfg.email_feedback == ""
     p.write_text(base + 'summary: {enabled: true}\n'
                  'email: {unsubscribe: "mailto:u@x.com", address: "1 Road, Zurich"}\n')
     cfg = load_config(str(p))

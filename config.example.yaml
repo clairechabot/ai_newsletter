@@ -43,6 +43,7 @@ sources:
 #   from_name: "The Edge"
 #   unsubscribe: sender   # a mailto: to EMAIL_SENDER; or any URL / "mailto:you@example.com?subject=Unsubscribe"
 #   address: "Acme Ltd · 1 Example Street, Zurich"
+#   feedback: sender      # adds "Useful / Not for us" links (mailto:) under each reading-order story
 
 # summary: "The day in 30 seconds": three one-line takeaways at the top of the
 # cover email and the web edition, each linking to the story or section that
