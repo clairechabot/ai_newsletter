@@ -172,3 +172,10 @@ def test_followups_of_recent_reading_orders_are_demoted():
         prioritize(items, CFG)
     assert items[0].extra["priority"] == "first" and "followup" not in items[0].extra
     assert "followup" not in client.messages.create.call_args.kwargs["messages"][0]["content"]
+
+def test_reply_budget_fits_a_full_edition():
+    from briefing.llm import THINKING_HEADROOM
+    items = [_item(n) for n in range(25)]
+    client = _run(items, {"items": []})
+    # each row now carries tier, why, topic and cluster/follow-up flags
+    assert client.messages.create.call_args.kwargs["max_tokens"] >= 150 * 25 + THINKING_HEADROOM
