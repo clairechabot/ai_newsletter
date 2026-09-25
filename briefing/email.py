@@ -186,7 +186,7 @@ def _cover_masthead(title, date_label, order, n_skim, n_sources, link="") -> str
             f'<tr><td colspan="2" style="padding-top:10px;{_F}font-size:13px;color:{_ON_BLACK};'
             f'line-height:18px;{_LH}">{" &middot; ".join(shape)}</td></tr></table></td></tr>')
 
-def _cover_summary(summary) -> str:
+def _cover_summary(summary, weekly=False) -> str:
     if not summary:
         return ""
     rows = ""
@@ -200,7 +200,8 @@ def _cover_summary(summary) -> str:
     return (f'<tr><td style="padding:24px 0 0 0;"><table {_T} style="background:{_P["white"]};'
             f'border:1px solid {_P["rule"]};"><tr><td style="padding:20px 22px 8px 22px;{_F}'
             f'font-size:12px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;'
-            f'color:{_P["black"]};">The day in 30 seconds</td></tr>{rows}</table></td></tr>')
+            f'color:{_P["black"]};">The {"week" if weekly else "day"} in 30 seconds</td></tr>'
+            f'{rows}</table></td></tr>')
 
 def _cover_badge(tier) -> str:
     base = (f"{_F}font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;"
@@ -239,6 +240,7 @@ def _feedback(item, to) -> str:
 
 def _order_row(n, item, org, feedback_to="") -> str:
     tier = item.extra.get("priority")
+    weekly_pick = bool(item.extra.get("weekly_pick"))
     href = _href(item.url)
     num_color = _P["cobalt"] if tier == "today" else _P["orange"]
     big = n < 2
@@ -261,10 +263,13 @@ def _order_row(n, item, org, feedback_to="") -> str:
     return (f'<tr><td style="padding:18px 0;border-bottom:1px solid {_P["rule"]};"><table {_T}>{pic}<tr>'
             f'<td width="44" valign="top" style="{_F}font-size:30px;font-weight:bold;color:{num_color};'
             f'line-height:30px;{_LH}">{n + 1}</td><td valign="top">'
-            f'<div style="padding-bottom:6px;">{_cover_badge(tier)}<span style="{_F}font-size:11px;'
+            f'<div style="padding-bottom:6px;">{"" if weekly_pick else _cover_badge(tier)}'
+            f'<span style="{_F}font-size:11px;'
             f'letter-spacing:.8px;text-transform:uppercase;color:{_P["muted"]};">'
-            f'{"&nbsp;" if tier in ("first", "today") else ""}{escape(item.source)} &middot; '
-            f'{read_minutes(item)} min</span></div>'
+            f'{"&nbsp;" if tier in ("first", "today") and not weekly_pick else ""}'
+            f'{escape(item.source)} &middot; '
+            + (f'{escape(item.extra["day_label"])} &middot; ' if item.extra.get("day_label") else "")
+            + f'{read_minutes(item)} min</span></div>'
             f'<a href="{href}" style="{_F}font-size:{19 if big else 17}px;font-weight:bold;'
             f'color:{_P["ink"]};text-decoration:none;line-height:{25 if big else 23}px;{_LH}">{title}</a>'
             f'{why_html}{also_html}{_feedback(item, feedback_to)}</td></tr></table></td></tr>')
@@ -314,19 +319,19 @@ def _cover_footer(title, n_sources, org, link, unsubscribe, address) -> str:
             f'line-height:19px;{_LH}">{"<br>".join(lines)}</td></tr>')
 
 def _cover_email(title, themes, *, greeting, edition_url, preheader, summary, org, now,
-                 unsubscribe, address, feedback="") -> str:
+                 unsubscribe, address, feedback="", weekly=False) -> str:
     order, skim = triage(themes)
     n_skim = sum(len(its) for _, its in skim)
     n_sources = len({i.source for i in all_items(themes)})
     date_label = now.strftime("%A, %d %b").replace(" 0", " ")
     link = _safe_url(edition_url)
-    body = _cover_summary(summary)
+    body = _cover_summary(summary, weekly)
     if greeting:
         body += (f'<tr><td style="padding:20px 0 0 0;{_F}font-size:14px;font-style:italic;'
                  f'color:{_P["ink"]};line-height:21px;{_LH}">{escape(greeting)}</td></tr>')
     if order:
         minutes = sum(read_minutes(i) for i in order)
-        body += _section_label("Your reading order",
+        body += _section_label(f"The week in {len(order)}" if weekly else "Your reading order",
                                f'{_plural(len(order), "story", "stories")} &middot; ~{minutes} min')
         to = feedback_address(feedback)
         body += "".join(_order_row(n, i, org, to) for n, i in enumerate(order))
@@ -382,9 +387,12 @@ def cover_preheader(themes, greeting="", summary=None) -> str:
         return greeting or (items[0].title if items else "")
     n_skim = sum(len(its) for _, its in skim)
     minutes = sum(read_minutes(i) for i in order)
-    shape = (f"{firsts} to read first, {todays} today (~{minutes} min), {n_skim} to skim."
-             if firsts or todays else
-             f"{len(order)} to read (~{minutes} min), {n_skim} to skim.")
+    if any(t.get("pinned") for t in themes):  # the Friday Week in 5
+        shape = f"The week in {len(order)} (~{minutes} min), {n_skim} to skim."
+    elif firsts or todays:
+        shape = f"{firsts} to read first, {todays} today (~{minutes} min), {n_skim} to skim."
+    else:
+        shape = f"{len(order)} to read (~{minutes} min), {n_skim} to skim."
     if not summary:
         return shape
     lead = summary[0]["lead"].rstrip(".!?") + ":"
@@ -406,16 +414,18 @@ def _preheader(text) -> str:
 
 def build_html_email(title, themes, *, greeting="", edition_url="", cover=False,
                      preheader="", summary=None, org="", now=None, unsubscribe="",
-                     address="", feedback="") -> str:
+                     address="", feedback="", weekly=False) -> str:
     """The email. `cover=True` builds the short triage cover (see above);
     `summary` (summary.py), `org` (priority.org, for "For <org>:"), the
     footer's `unsubscribe` link and postal `address`, and `feedback` (where
-    "Useful / Not for us" votes go) apply to the cover only."""
+    "Useful / Not for us" votes go) apply to the cover only. `weekly` titles
+    the cover as the Friday Week in 5 (weekly.py)."""
     now = now or datetime.now(timezone.utc)
     if cover:
         return _cover_email(title, themes, greeting=greeting, edition_url=edition_url,
                             preheader=preheader, summary=summary or [], org=org, now=now,
-                            unsubscribe=unsubscribe, address=address, feedback=feedback)
+                            unsubscribe=unsubscribe, address=address, feedback=feedback,
+                            weekly=weekly)
     greet_html = f'<div class="greeting">{escape(greeting)}</div>' if greeting else ""
     body = ""
     for theme in themes:

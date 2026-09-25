@@ -127,6 +127,14 @@ archive:
     - "Startups & funding"
     - "Work & society"
 
+# Weekdays only. Friday's edition is the "Week in 5": the week's five most
+# important stories (Mon-Thu reading orders + Friday's news) with "The week
+# in 30 seconds"; Friday's other stories run as the skim list.
+schedule:
+  weekly_day: friday
+  weekly_picks: 5
+  skip_weekends: true
+
 # Optional extensions (uncomment to enable — see config.example.yaml for docs):
 # voice:    { enabled: true, name: "Your editor's name", tone: "warm, cozy, slightly witty" }  # invent your own — see README
 # editions:

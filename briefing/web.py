@@ -308,6 +308,8 @@ def _json_for_html(data) -> str:
 
 
 def _badge(item) -> str:
+    if item.extra.get("weekly_pick"):
+        return ""
     tier = item.extra.get("priority")
     return (f'<span class="badge badge-{tier}">{escape(LABELS[tier])}</span>'
             if tier in LABELS else "")
@@ -334,17 +336,19 @@ def _section_of(themes) -> dict:
     return {id(i): (t.get("tab") or tab_label(t["name"])) for t in themes for i in t["items"]}
 
 
-def _triage_bar(summary, order, n_skim) -> str:
+def _triage_bar(summary, order, n_skim, weekly=False) -> str:
     firsts = [n for n, i in enumerate(order) if i.extra.get("priority") == "first"]
     todays = [n for n, i in enumerate(order) if i.extra.get("priority") == "today"]
     links = []
     if summary:
         links.append(("Summary", "", "summary"))
-    if firsts:
+    if weekly and order:
+        links.append(("Week in 5" if len(order) == 5 else "The week", str(len(order)), "order"))
+    elif firsts:
         links.append(("Read first", str(len(firsts)), f"order-{firsts[0]}"))
     if todays:
         links.append(("Read today", str(len(todays)), f"order-{todays[0]}"))
-    if order and not firsts and not todays:
+    if order and not firsts and not todays and not weekly:
         links.append(("Reading order", str(len(order)), "order"))
     if n_skim:
         links.append(("Skim", str(n_skim), "skim"))
@@ -389,7 +393,7 @@ def _budget(order, n_skim, org) -> str:
     return f'<aside class="budget"><div class="bt">How much time do you have?</div>{body}</aside>'
 
 
-def _summary_section(summary, order, skim, org) -> str:
+def _summary_section(summary, order, skim, org, weekly=False) -> str:
     if not summary:
         return ""
     names = [t.get("tab") or tab_label(t["name"]) for t, _ in skim]
@@ -401,7 +405,8 @@ def _summary_section(summary, order, skim, org) -> str:
                 f'{escape(s["text"])}</p>{jump}</div></li>')
     n_skim = sum(len(its) for _, its in skim)
     return (f'<section class="sum" id="summary"><div class="sum-main">'
-            f'<h2 class="h">The day in 30 seconds</h2><ol class="takeaways">{lis}</ol></div>'
+            f'<h2 class="h">The {"week" if weekly else "day"} in 30 seconds</h2>'
+            f'<ol class="takeaways">{lis}</ol></div>'
             f'{_budget(order, n_skim, org)}</section>')
 
 
@@ -411,7 +416,8 @@ def _order_item(n, item, section, org, reading_images) -> str:
     ext = 'target="_blank" rel="noopener"'
     also = item.extra.get("also") or []
     meta = (f'<div class="meta">{_badge(item)}<span>{escape(item.source)}</span>'
-            f'<span class="quiet">{escape(section)} · {read_minutes(item)} min</span>'
+            f'<span class="quiet">{escape(item.extra.get("day_label") or section)} · '
+            f'{read_minutes(item)} min</span>'
             + (f'<span class="quiet">· {len(also) + 1} sources, 1 story</span>' if also else "")
             + "</div>")
     why = item.extra.get("why")
@@ -435,7 +441,7 @@ def _order_item(n, item, section, org, reading_images) -> str:
             f'<a class="open-link" href="{href}" {ext}>Open article ↗</a></div></div>{pic}</article>')
 
 
-def _order_section(order, themes, org, reading_images, read_key) -> str:
+def _order_section(order, themes, org, reading_images, read_key, weekly=False) -> str:
     if not order:
         return ""
     section = _section_of(themes)
@@ -443,7 +449,7 @@ def _order_section(order, themes, org, reading_images, read_key) -> str:
     rows = "".join(_order_item(n, i, section.get(id(i), ""), org, reading_images)
                    for n, i in enumerate(order))
     return (f'<section class="order" id="order" data-key="{escape(read_key, quote=True)}">'
-            f'<h2 class="h">Read in this order<span>{_plural(len(order), "story", "stories")} · '
+            f'<h2 class="h">{"The week in " + str(len(order)) if weekly else "Read in this order"}<span>{_plural(len(order), "story", "stories")} · '
             f'~{minutes} min</span></h2>{rows}</section>')
 
 
@@ -521,11 +527,13 @@ def _shell(title, page_title, body, extra_css, script, nav_on, top="") -> str:
 
 def build_web_edition(title, themes, *, greeting="", edition_label="", date_str=None,
                       edition_date=None, slot_key="edition", archive_link="archive.html",
-                      summary=None, org="", reading_images="first", skim_expanded=False) -> str:
+                      summary=None, org="", reading_images="first", skim_expanded=False,
+                      weekly=False) -> str:
     """Render the full browsable edition as a self-contained HTML string.
     `summary` comes from summary.py; `org` names the reader in the why lines;
     `reading_images` is first|all|none (which reading-order stories get a
-    picture); `skim_expanded` opens every skim gist by default."""
+    picture); `skim_expanded` opens every skim gist by default; `weekly`
+    titles it as the Friday Week in 5 (weekly.py)."""
     now = datetime.now(timezone.utc)
     date_str = date_str or now.strftime("%A %d %B %Y")
     edition_date = edition_date or now.strftime("%Y-%m-%d")
@@ -545,8 +553,8 @@ def build_web_edition(title, themes, *, greeting="", edition_label="", date_str=
     greet_html = f'<div class="greeting">{escape(greeting)}</div>' if greeting else ""
     read_key = f"edge-read-{edition_date}-{slot_key}"
     body = (f'<div class="wrap">{dateline}{greet_html}'
-            f'{_summary_section(summary, order, skim, org)}'
-            f'{_order_section(order, themes, org, reading_images, read_key)}'
+            f'{_summary_section(summary, order, skim, org, weekly)}'
+            f'{_order_section(order, themes, org, reading_images, read_key, weekly)}'
             f'{_skim_section(skim, skim_expanded)}'
             f'<a class="acta" href="archive.html"><span><span class="k">Looking for something older?</span>'
             f'<span class="l">Search every story {escape(title)} has sent, by topic, priority or source.'
@@ -558,7 +566,7 @@ def build_web_edition(title, themes, *, greeting="", edition_label="", date_str=
     script = data + f"<script>{_EDITION_JS}</script>"
     page_title = f"{title} — {edition_label}" if edition_label else title
     return _shell(title, page_title, body, _EDITION_CSS, script, "today",
-                  top=_triage_bar(summary, order, n_skim))
+                  top=_triage_bar(summary, order, n_skim, weekly))
 
 
 def save_edition(out_dir, html, date_str, slot_key) -> dict:

@@ -49,6 +49,13 @@ render (email + optional web edition).
   All markup is server-rendered and works without JS; the inline JS only adds read state, gist
   toggles, smooth jumps and the archive filters.
 - **editions** (`editions.py`): AM/PM editions chosen by local hour; match the cron in `daily.yml`.
+- **schedule** (`weekly.py`): `skip_weekends` sends nothing Sat/Sun (checked before login or any
+  fetch; the cron in `daily.yml` is weekdays-only too). On `weekly_day` (Friday) the edition is the
+  "Week in 5": `week_candidates` reads this week's Read first/today rows back from the archive plus
+  today's reading order, one Claude call (`pick_week`) picks `weekly_picks` and writes "The week in
+  30 seconds", and `weekly_themes` puts the picks in a `pinned` theme that `triage` uses as the whole
+  reading order (today's other stories are skim). Fallback: the week's Read first, newest first; no
+  candidates at all = a normal daily edition. Saved as `editions/<date>-weekly.html`.
 
 ## Adding a source when asked (decision order)
 1. **Has an RSS feed?** Add one line to `config.yaml`: `{ type: rss, name: "X", url: "<feed>" }`.
