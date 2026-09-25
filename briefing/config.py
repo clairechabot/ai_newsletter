@@ -38,6 +38,7 @@ class Config:
     web: dict = field(default_factory=dict)          # web edition + archive (web.py)
     editions: list = field(default_factory=list)     # AM/PM schedule (editions.py)
     archive: dict = field(default_factory=dict)      # archive topics (web.py archive)
+    schedule: dict = field(default_factory=dict)     # weekly edition + weekend skip (weekly.py)
     email_mode: str = "full"                         # "full" | "cover"
     email_subject: str = "date"                      # "date" | "top_pick"
     email_from_name: str = ""                        # inbox sender name; "" = account name
@@ -71,6 +72,10 @@ def load_config(path: str) -> Config:
         if t not in VALID_TYPES:
             raise ConfigError(f"source has invalid/missing type: {s!r}")
     email = raw.get("email", {})
+    day = str((raw.get("schedule") or {}).get("weekly_day") or "").strip().lower()
+    if day and day not in ("monday", "tuesday", "wednesday", "thursday", "friday",
+                           "saturday", "sunday"):
+        raise ConfigError(f"schedule.weekly_day must be a weekday name, got {day!r}")
     email_mode = email.get("mode", "full")
     if email_mode not in VALID_EMAIL_MODES:
         raise ConfigError(f"email.mode must be one of {sorted(VALID_EMAIL_MODES)}, got {email_mode!r}")
@@ -93,6 +98,7 @@ def load_config(path: str) -> Config:
         web=raw.get("web", {}) or {},
         editions=raw.get("editions", []) or [],
         archive=raw.get("archive", {}) or {},
+        schedule=raw.get("schedule", {}) or {},
         email_mode=email_mode,
         email_subject=email_subject,
         email_from_name=str(email.get("from_name", "") or ""),

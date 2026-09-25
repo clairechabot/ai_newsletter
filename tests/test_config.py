@@ -112,3 +112,16 @@ def test_archive_topics_from_config_or_interests(tmp_path):
     p.write_text(base + 'archive: {topics: ["Governed AI", " governed ai ", "", "Work & society"]}\n')
     assert load_config(str(p)).topics() == ["Governed AI", "Work & society"]
     assert len(load_config("config.yaml").topics()) == 8
+
+def test_schedule_defaults_off_and_validates_the_day(tmp_path):
+    import pytest
+    from briefing.config import load_config, ConfigError
+    base = 'filter: {mode: recent}\nsources: [{type: rss, name: X, url: "http://x"}]\n'
+    p = tmp_path / "c.yaml"
+    p.write_text(base)
+    assert load_config(str(p)).schedule == {}
+    p.write_text(base + "schedule: {weekly_day: Friday, skip_weekends: true}\n")
+    assert load_config(str(p)).schedule["skip_weekends"] is True
+    p.write_text(base + "schedule: {weekly_day: fri}\n")
+    with pytest.raises(ConfigError):
+        load_config(str(p))

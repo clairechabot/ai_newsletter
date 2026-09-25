@@ -226,6 +226,9 @@ def order_themes(themes) -> list:
 
 def reading_list(themes) -> list:
     """The day's "Read first" items, most important first."""
+    pinned = [i for t in themes if t.get("pinned") for i in t["items"]]
+    if pinned:
+        return pinned
     return sorted((i for t in themes for i in t["items"] if i.extra.get("priority") == "first"),
                   key=_order_key)
 
@@ -236,7 +239,12 @@ def triage(themes) -> tuple:
     off, or its call failed) the top story of each of the first FALLBACK_ORDER
     sections stands in, so an outage day still has a reading order. Skim is
     [(theme, items)] for
-    everything else, in theme order, leaving out empty sections."""
+    everything else, in theme order, leaving out empty sections. A theme marked
+    "pinned" (weekly.py) is the reading order as it stands, and every other
+    theme is skim."""
+    pinned = [i for t in themes if t.get("pinned") for i in t["items"]]
+    if pinned:  # the Friday Week in 5: its picks are the reading order, as given
+        return pinned, [(t, t["items"]) for t in themes if not t.get("pinned") and t["items"]]
     items = [i for t in themes for i in t["items"]]
     order = sorted((i for i in items if i.extra.get("priority") in ("first", "today")),
                    key=_order_key)

@@ -109,3 +109,13 @@ sources:
 # editions:
 #   - { key: morning, label: "Morning Edition", until_hour: 12 }
 #   - { key: evening, label: "Evening Edition" }
+
+# schedule: a weekly recap and a weekday-only rhythm. On `weekly_day` the
+# edition becomes the "Week in 5": one Claude call picks the week's most
+# important stories from the archive's saved editions (needs `web.enabled`)
+# plus today's news, and writes "The week in 30 seconds". `skip_weekends`
+# sends nothing on Saturday or Sunday. Also trim the cron in daily.yml.
+# schedule:
+#   weekly_day: friday
+#   weekly_picks: 5
+#   skip_weekends: true

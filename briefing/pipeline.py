@@ -11,10 +11,16 @@ from briefing.summary import summarize
 from briefing.voice import compose_greeting, RECENT_KEEP
 from briefing.editions import pick_edition
 from briefing.email import build_html_email, send_email, top_pick_subject, check_login, cover_preheader
-from briefing.web import build_web_edition, save_edition, build_archive_index
+from briefing.web import build_web_edition, save_edition, build_archive_index, collect_archive
+from briefing.weekly import (is_weekly, skips_today, picks_wanted, week_candidates, pick_week,
+                             weekly_themes, WEEKLY_LABEL, WEEKLY_SLOT)
 
 def run(cfg, history_path="history.json", now=None) -> None:
     now = now or datetime.now()  # local time decides which edition (AM/PM) runs
+    if skips_today(cfg.schedule, now):
+        print(f"[pipeline] {now:%A}: no edition at weekends (schedule.skip_weekends)", flush=True)
+        return
+    weekly = is_weekly(cfg.schedule, now)
     slot = pick_edition(cfg.editions, now.hour)
     title = f"{cfg.title} — {slot['label']}" if slot.get("label") else cfg.title
 
@@ -37,7 +43,21 @@ def run(cfg, history_path="history.json", now=None) -> None:
     selected = prioritize(selected, cfg.priority, topics=cfg.topics(),
                           recent=recent_titles(hist, today))
     themes = order_themes(group_into_themes(selected, cfg.voice))
-    summary = summarize(themes, cfg.summary, profile=cfg.priority)  # optional: "The day in 30 seconds"
+    if weekly:
+        # Friday: the week's top stories (from the archive + today) replace the
+        # daily reading order; today's other stories stay as the skim list.
+        past = collect_archive(cfg.web.get("output_dir", "docs")) if cfg.web.get("enabled") else []
+        picks, summary = pick_week(week_candidates(past, themes, now), picks_wanted(cfg.schedule),
+                                   profile=cfg.priority)
+        if picks:
+            themes = weekly_themes(picks, themes)
+            slot = {"key": WEEKLY_SLOT, "label": WEEKLY_LABEL}
+            title = f"{cfg.title} — {WEEKLY_LABEL}"
+        else:
+            print("[pipeline] no stories this week to pick from; sending a daily edition", flush=True)
+            weekly = False
+    if not weekly:
+        summary = summarize(themes, cfg.summary, profile=cfg.priority)  # optional: "The day in 30 seconds"
     greeting = compose_greeting(cfg.voice, themes, recent=hist.get("recent_greetings"))
     org = cfg.priority.get("org", "") if cfg.priority.get("enabled") else ""
 
@@ -50,7 +70,8 @@ def run(cfg, history_path="history.json", now=None) -> None:
                                  edition_date=now.strftime("%Y-%m-%d"), slot_key=slot["key"],
                                  summary=summary, org=org,
                                  reading_images=cfg.web.get("reading_images", "first"),
-                                 skim_expanded=bool(cfg.web.get("skim_expanded", False)))
+                                 skim_expanded=bool(cfg.web.get("skim_expanded", False)),
+                                 weekly=weekly)
         paths = save_edition(out_dir, page, now.strftime("%Y-%m-%d"), slot["key"])
         build_archive_index(out_dir, site_title=cfg.title, topics=cfg.topics())
         print(f"[pipeline] web edition -> {paths['edition']}", flush=True)
@@ -65,7 +86,7 @@ def run(cfg, history_path="history.json", now=None) -> None:
                                        else (greeting or lead)),
                             summary=summary, org=org, now=now,
                             unsubscribe=cfg.email_unsubscribe, address=cfg.email_address,
-                            feedback=cfg.email_feedback)
+                            feedback=cfg.email_feedback, weekly=weekly)
     subject = top_pick_subject(title, themes) if cfg.email_subject == "top_pick" else None
     send_email(title, html, subject=subject, from_name=cfg.email_from_name)
 

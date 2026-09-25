@@ -147,3 +147,70 @@ def test_run_feeds_recent_reading_orders_to_priority_and_remembers_today(tmp_pat
     assert seen["recent"] == ["Yesterday's lead"]
     saved = save.call_args[0][1]["recent_order"]
     assert {"date": "2026-09-24", "title": "T"} in saved
+
+def _sched_cfg(tmp_path, **kw):
+    return Config(title="The Edge", filter_mode="recent", interests=[], max_items=5,
+                  per_source_cap=2, recency_hours=24,
+                  sources=[{"type": "rss", "name": "S", "url": "http://x"}],
+                  priority={"enabled": True, "context": "x", "org": "Khare"}, email_mode="cover",
+                  web={"enabled": True, "output_dir": str(tmp_path / "docs"), "edition_url": "https://s/"},
+                  schedule={"weekly_day": "friday", "skip_weekends": True}, **kw)
+
+def test_run_sends_nothing_at_weekends(tmp_path):
+    with patch("briefing.pipeline.check_login") as login, patch("briefing.pipeline.fetch_all") as fetch, \
+         patch("briefing.pipeline.send_email") as send:
+        run(_sched_cfg(tmp_path), history_path=str(tmp_path / "h.json"), now=datetime(2026, 9, 26, 6, 13))
+    login.assert_not_called(); fetch.assert_not_called(); send.assert_not_called()
+
+def test_friday_is_the_week_in_5(tmp_path):
+    from briefing.web import build_web_edition, save_edition
+    cfg = _sched_cfg(tmp_path, email_subject="top_pick")
+    docs = str(tmp_path / "docs")
+    mon = Item.make(source="Sifted", source_type="rss", title="Monday's big one", url="https://x/mon",
+                    summary="s", published=datetime.now(timezone.utc), extra={"priority": "first", "why": "w"})
+    save_edition(docs, build_web_edition("E", [{"name": "T", "items": [mon]}], edition_date="2026-09-21",
+                                         slot_key="daily"), "2026-09-21", "daily")
+    def label(items, pcfg, topics=(), recent=()):
+        items[0].extra.update(priority="first", why="today w")
+        return items
+    weekly_reply = {"picks": [{"i": 0, "why": "Set the week's agenda."}, {"i": 1}],
+                    "summary": [{"lead": "Big week.", "text": "Monday set it up.", "ref": {"stories": [1]}}]}
+    sent = {}
+    from tests.test_weekly import _client as weekly_client
+    with patch("briefing.pipeline.fetch_all", return_value=[_item("a"), _item("b")]), \
+         patch("briefing.pipeline.load_history", return_value={"seen_ids": []}), \
+         patch("briefing.pipeline.prioritize", side_effect=label), \
+         patch("briefing.pipeline.group_into_themes",
+               side_effect=lambda items, voice=None: [{"name": "T", "emoji": "X", "items": list(items)}]), \
+         patch("briefing.weekly._client", return_value=weekly_client(weekly_reply)), \
+         patch("briefing.pipeline.summarize") as daily_summary, \
+         patch("briefing.pipeline.send_email", side_effect=lambda title, html, **kw: sent.update(title=title, html=html, **kw)), \
+         patch("briefing.pipeline.save_history"):
+        run(cfg, history_path=str(tmp_path / "h.json"), now=datetime(2026, 9, 25, 6, 13))
+    daily_summary.assert_not_called()
+    assert sent["title"] == "The Edge — Week in 5" and sent["subject"] == "The Edge — Week in 5 | Monday's big one"
+    html = sent["html"]
+    assert "The week in 30 seconds" in html and "The week in 2" in html and "Your reading order" not in html
+    order = html.split(">The week in 2<")[1].split("Skim if you have time")[0]
+    assert order.index("Monday") < order.index("http://x/") and "Sifted &middot; Mon &middot;" in order
+    assert "Read first</span>" not in order  # every pick is a top story; no badge needed
+    assert sent["html"].count("The week in 2 (~") == 1  # inbox preview
+    assert "Set the week&#x27;s agenda." in order or "Set the week's agenda." in order
+    page = (tmp_path / "docs" / "editions" / "2026-09-25-weekly.html").read_text()
+    assert "Week in 5" in page and "The week in 30 seconds" in page and "Mon · " in page
+
+def test_friday_without_a_week_to_pick_from_sends_a_daily(tmp_path):
+    cfg = _sched_cfg(tmp_path)
+    cfg.web = {}
+    sent = {}
+    with patch("briefing.pipeline.fetch_all", return_value=[_item("a")]), \
+         patch("briefing.pipeline.load_history", return_value={"seen_ids": []}), \
+         patch("briefing.pipeline.prioritize", side_effect=lambda items, *a, **k: items), \
+         patch("briefing.pipeline.group_into_themes",
+               side_effect=lambda items, voice=None: [{"name": "T", "emoji": "X", "items": list(items)}]), \
+         patch("briefing.pipeline.summarize", return_value=[]) as daily_summary, \
+         patch("briefing.pipeline.send_email", side_effect=lambda title, html, **kw: sent.update(title=title, html=html)), \
+         patch("briefing.pipeline.save_history"):
+        run(cfg, history_path=str(tmp_path / "h.json"), now=datetime(2026, 9, 25, 6, 13))
+    daily_summary.assert_called_once()
+    assert sent["title"] == "The Edge" and "Your reading order" in sent["html"]
