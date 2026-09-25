@@ -1,5 +1,5 @@
 from __future__ import annotations
-from briefing.llm import make_client
+from briefing.llm import make_client, MODEL, THINKING_HEADROOM
 import os
 import json
 import re
@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup
 from briefing.models import Item, normalize_url
 from briefing.sources._fetch import fetch_with_fallback as http_get
 
-MODEL = os.environ.get("BRIEFING_MODEL", "claude-sonnet-4-6")
 
 def _client():
     return make_client()
@@ -38,7 +37,7 @@ def fetch_claude(cfg) -> list[Item]:
     # type string or beta header, update these two values per Anthropic docs;
     # behavior is otherwise unchanged.
     msg = client.messages.create(
-        model=MODEL, max_tokens=1500,
+        model=MODEL, max_tokens=1500 + THINKING_HEADROOM,
         tools=[{"type": "web_fetch_20250910", "name": "web_fetch", "max_uses": 3}],
         extra_headers={"anthropic-beta": "web-fetch-2025-09-10"},
         messages=[{"role": "user", "content": _PROMPT.format(url=cfg["url"])}],

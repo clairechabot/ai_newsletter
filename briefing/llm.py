@@ -7,7 +7,12 @@ import json
 import re
 import anthropic
 
-MODEL = os.environ.get("BRIEFING_MODEL", "claude-sonnet-4-6")
+MODEL = os.environ.get("BRIEFING_MODEL") or "claude-sonnet-5"
+# Current models think by default when a request doesn't configure it, and
+# thinking tokens count against max_tokens. Every call adds this much room on
+# top of the size of the answer it expects, so a long think can't cut a JSON
+# reply short. Only tokens actually generated are billed.
+THINKING_HEADROOM = 4000
 
 
 def make_client():
@@ -37,14 +42,14 @@ def claude_json(prompt, *, max_tokens=1000, context="llm", client_factory=None):
     make = client_factory or _client
     for attempt in (1, 2):
         try:
-            msg = make().messages.create(model=MODEL, max_tokens=max_tokens,
+            msg = make().messages.create(model=MODEL, max_tokens=max_tokens + THINKING_HEADROOM,
                 messages=[{"role": "user", "content": prompt}])
         except Exception as e:  # network, overload, rate limit, missing key
             print(f"[{context}] API call failed (attempt {attempt}): {e}", flush=True)
             continue
         text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
         if getattr(msg, "stop_reason", None) == "max_tokens":
-            print(f"[{context}] reply hit max_tokens={max_tokens} (attempt {attempt})",
+            print(f"[{context}] reply hit max_tokens={max_tokens + THINKING_HEADROOM} (attempt {attempt})",
                   flush=True)
         try:
             data = json.loads(strip_fences(text))
