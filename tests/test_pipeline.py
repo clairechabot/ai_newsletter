@@ -119,6 +119,7 @@ def test_run_folds_clusters_summarizes_and_sends_cover(tmp_path):
          patch("briefing.pipeline.save_history") as save:
         run(cfg, history_path=str(tmp_path / "h.json"))
     assert seen["themed"] == ["a"] and summ.call_args[0][1] == {"enabled": True}
+    assert summ.call_args.kwargs["profile"] == cfg.priority
     assert "<b>Big day.</b> Something happened." in sent["html"]
     assert "For Khare:" in sent["html"] and "Big day: Something happened." in sent["html"]
     assert "Big day." in (tmp_path / "docs" / "index.html").read_text()

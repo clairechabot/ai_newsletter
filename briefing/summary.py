@@ -28,7 +28,21 @@ def is_enabled(cfg) -> bool:
     return bool(cfg) and bool(cfg.get("enabled"))
 
 
-def _prompt(order, skim) -> str:
+def _reader(profile) -> str:
+    """Prompt lines about who reads the briefing, from the priority config
+    (`org` + `context`), or "" when there is no profile."""
+    profile = profile or {}
+    context = str(profile.get("context") or "").strip()
+    if not profile.get("enabled") or not context:
+        return ""
+    org = profile.get("org") or "the reader's company"
+    return (f"The readers are the team at {org}:\n{context}\n"
+            f"Pick the developments that matter most to {org} and, where it plausibly does, "
+            f"end the text with what it means for them in a few words. Never invent a link "
+            f"to {org} that isn't there; a big industry story can stand on its own.\n")
+
+
+def _prompt(order, skim, profile=None) -> str:
     stories = "\n".join(
         f"Story {n}: {i.source} | {display_title(i)} | {(i.summary or '')[:300]}"
         + (f" (also covered by {', '.join(a.source for a in i.extra.get('also') or [])})"
@@ -40,7 +54,8 @@ def _prompt(order, skim) -> str:
         for theme, its in skim)
     return (
         "You write the top of a daily AI briefing: the day in 30 seconds.\n"
-        f"Give exactly {MAX_TAKEAWAYS} takeaways about the day's biggest developments.\n"
+        + _reader(profile)
+        + f"Give exactly {MAX_TAKEAWAYS} takeaways about the day's biggest developments.\n"
         '- "lead": 2 or 3 words ending with a period, e.g. "Price war."\n'
         '- "text": at most 25 words. Concrete: name the companies and the numbers. '
         "No hype, no adjectives like groundbreaking.\n"
@@ -81,14 +96,16 @@ def _clean(text, limit) -> str:
     return " ".join(str(text or "").split())[:limit]
 
 
-def summarize(themes, cfg) -> list:
-    """The day's takeaways (see module doc), or [] when off or on failure."""
+def summarize(themes, cfg, profile=None) -> list:
+    """The day's takeaways (see module doc), or [] when off or on failure.
+    `profile` is the priority config: with it, takeaways are written for that
+    team (what the day means for them), not just the day's biggest news."""
     if not is_enabled(cfg):
         return []
     order, skim = triage(themes)
     if not order and not skim:
         return []
-    data = claude_json(_prompt(order, skim), max_tokens=900, context="summary",
+    data = claude_json(_prompt(order, skim, profile), max_tokens=900, context="summary",
                        client_factory=lambda: _client())
     rows = data.get("summary") if isinstance(data, dict) else None
     if not isinstance(rows, list):

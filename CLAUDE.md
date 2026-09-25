@@ -20,7 +20,8 @@ render (email + optional web edition).
   order; with no labels at all `triage` uses each of the first 3 sections' lead story. With topics (`Config.topics()`: `archive.topics`, else labels from `filter.interests`) it
   also sets `extra["topic"]` (validated, "" if none). `priority.triage(themes)` gives the renderers' (reading order, skim) split. Fails soft to
   unlabeled, unclustered items.
-- **summary** (`summary.py`): "The day in 30 seconds": one Claude call after theming, 3
+- **summary** (`summary.py`): "The day in 30 seconds": one Claude call after theming, written for
+  the priority profile (`org` + `context`) when priority is on, 3
   `{lead, text, short, ref}` takeaways (`ref` = `{"stories": [..]}` or `{"section": n}`). Off by
   default; [] on failure and the section is hidden.
 - **images** (`images.py`): after filtering, sets `item.extra["image"]` from the feed's own media
