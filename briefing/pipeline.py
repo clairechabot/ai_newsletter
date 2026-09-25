@@ -23,8 +23,9 @@ def run(cfg, history_path="history.json", now=None, *, edition="auto", preview=F
 
     `edition` forces "daily" or "weekly" regardless of the day ("auto" follows
     `schedule`; a forced edition also runs at weekends). `preview` sends the
-    email with a "[Preview]" subject but saves nothing: no history, no web
-    edition, so the real edition still has every story. `only_if_unsent` is
+    email with a "[Preview]" subject, ignores which stories were already sent,
+    and saves nothing: no history, no web edition, so the real edition still
+    has every story. `only_if_unsent` is
     the backup trigger: skip if history says an edition already went out today.
     """
     now = now or datetime.now()  # local time decides which edition (AM/PM) runs
@@ -45,7 +46,9 @@ def run(cfg, history_path="history.json", now=None, *, edition="auto", preview=F
     raw = fetch_all(cfg)
     print(f"[pipeline] fetched {len(raw)} items", flush=True)
     hist = load_history(history_path)
-    fresh = drop_seen(raw, hist)
+    # A preview shows what an edition built from today's news looks like, even
+    # right after the real one went out, so it doesn't skip stories already sent.
+    fresh = list(raw) if preview else drop_seen(raw, hist)
     print(f"[pipeline] {len(fresh)} fresh after dedup", flush=True)
     if not fresh:
         print("[pipeline] nothing new; skipping edition", flush=True)
