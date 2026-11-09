@@ -34,6 +34,7 @@
     "0468ac9458a24fdb384b769aa54347c4d2b84d0f",
     "047590bd36215786a8431fc53a3afea1a513c5b0",
     "048da226d17ea2b349640f5097e39acf43d376b7",
+    "04c6be29ce1e07113daa0cfd15fa9221d4587327",
     "04cdfadd5f97229ffce5803ba410a2fbe48f61a0",
     "04e9dc3828b5420c0f01153ffacad571c15c3fe5",
     "04f821f074b3e43b69c0f2be67a607a99dbbff5e",
@@ -65,6 +66,7 @@
     "085f7195b66fbb80632f8437f70931eb86f50b67",
     "08ab392305b5b4a79eb02bd5612b452ff44f2a55",
     "08b710f1e7801fa86cc96c61e8aad81d8bc7aec0",
+    "08c4f835052620137eb9a12c24ff4d6188041505",
     "08c83ee5984958495da29dd4c7fc76412647d489",
     "09718e3b76d41e8e828cc5e3de12b030b73ee741",
     "0992c2fcf04cf3c819a4c6148d86d602ce2984fe",
@@ -99,6 +101,7 @@
     "0d638c52e7b27a2dd22435e29aeb938291617a48",
     "0d75546bb8166e23bb53042592674b9f952bb860",
     "0d832e896ee0c73d0dedb2b84c50aff64b44ebfb",
+    "0d9e58e220ba6bdd976e5bf382eba81c7d92ff71",
     "0da83fac34b838d83aa77727493435c2db20a4f3",
     "0da9b9381ef5677c2808cde9ae395863dc10ec29",
     "0daa6f30ee4855b2e044451edb04a4444674b1b7",
@@ -177,6 +180,7 @@
     "1788851a654896a6672e50fb033fdf85d293b8c2",
     "179bce60a073285dc0d43424c6506ce347ee98cf",
     "17a98b5dd08cb606245ba7bb4e0dd008997b21ab",
+    "17e7905c289c69848fe5b8bdd98ecfa057972055",
     "184b8dd1620eb53b90daae89602382ec05b24fd0",
     "184b9752a0bfc10da9680fb6a35c53b0a5e7a366",
     "188d56729d9742ab8b7fb0f3e10bbb31d4491b97",
@@ -226,6 +230,7 @@
     "1d77064cbebb782f18a0731cbc2f9d09624e05c9",
     "1dd7745f40d37579b3aea13f7ed99edf5d660cc1",
     "1dd9ce125c6e0e6007fa40c2f3cbd36d227c92c3",
+    "1dde23c46262bc6b96d9cc2c80840ac26ea20313",
     "1de8e62ff715d1f1b849a16afe7dfd3ed7898410",
     "1e1af644099d03c02873cd49c68afeb0c00bc49a",
     "1e9972bb68e322beb49bef950babcf34b166366d",
@@ -334,7 +339,9 @@
     "2f3282e483141f68421d2a0f33b7c26326fcc689",
     "2f504fc73f8d0df3c88b59f84487fe4f38bc91f8",
     "2f80a24ad48d0005bbb4c5fb42790c44510942d0",
+    "2f91365a4b5655180c3eed33e81ede3d53b5dfbe",
     "2f9260055b13ed25d04e75df8c3b231b9a29e497",
+    "2fa2cfa7524303a82190281d1b06a510bf6cbadb",
     "2faa471474b47f6c69818f83e56e1c4a7447e953",
     "2fcf231057904e0c7af0759187431ff68385d639",
     "2ff9abced9104f37039c3addb70677e3f15b180b",
@@ -474,6 +481,7 @@
     "45ad9337ee37b95bc77482e31a2ff927d72c8f27",
     "45bc2fccc930f51751163591b5807fca42d28c2b",
     "45c03c3cc3da3b1eca103b2e1ede277ada44a06e",
+    "460a690b96cc11e6c3f91e50d1336e1013f747a1",
     "460caccaf1851a5aa1f40b28ee5cb81765adfa8e",
     "4637c34776c24214959ccaec9f872a92b7c042ca",
     "464c87c0f49f850c4d3ea372d840114e231c5e24",
@@ -483,6 +491,7 @@
     "46cc1ca55ca34a62e523f8f40cd7b5239d17e523",
     "46d73a9d0c3edb28956aa7791e6b4cd077d74687",
     "471f6b1cbb073045e851a1f4cc67f626c9846660",
+    "47266cd33b4b9a0aaf28c6764488f379e0da1089",
     "475b180cf559ee8a197a2be77f82720493ab549b",
     "475d45e2c324373e71011a1d4f893cb8eace2ba1",
     "476f144326fb20658664846a866d60385d38451d",
@@ -534,6 +543,7 @@
     "4e575d2eae0cb3ec2aa7cf3cbbacce07ba618b2a",
     "4e6cc036946bd7dc3a2b884ef8c22f6fda8bb57c",
     "4e87365ea1f55ae8a52263efbfd66377037a300e",
+    "4ea5aa42730ea9a6df12171dc62b51fac07f9985",
     "4eb9f7080b11166ecabe823c8b93aa97e58d2978",
     "4ec1bed4e9cb14c0f7908055282acb98587d85c8",
     "4f036ba228e977c190f0c37ae7b88f0feeb5ffed",
@@ -567,6 +577,7 @@
     "53d9640489a6fde2b9f031478dfef3b5c3f09247",
     "53df6788abfac7028756c1f478d0fab51da17477",
     "5430c039265bc22c06dfef4b3b62c2e0b4fd4823",
+    "547683ca8c7fd3eb7a48922181d0d85034523712",
     "5494962ad64dc28d1ad0a344cfe5639f8a4589a1",
     "54a8c71de5f35b09d319dafa605b7d1d3be4e991",
     "54eb592b6cc543fd094ddc8cc91552c375beae60",
@@ -596,6 +607,7 @@
     "58651e1e3617910335bc22ce44072937dbe8dc9e",
     "588ce7841504e2e7dc6ad22cd2f9f3ea2814cce0",
     "58ce014b88a0ec8b1e94f5b7c0e7f9001944e48d",
+    "58e4f2bd0fc2b13c84715aef532429d968f945f7",
     "58ffa3f0208bb7c66591fc3b2123f104d64d6411",
     "5958fe8b1db319742e653229dc5917d62d563ff6",
     "598796383c82a406f3fb8247445e5da894c2ccb9",
@@ -722,6 +734,7 @@
     "687ad322a96322364a27143a6bc7059a5a426745",
     "688ac41baeea657de277fb6074f1442e740ab64a",
     "68af6fb9d63e5ee8a27bce97b6a7d2b158a07307",
+    "68b6e9d4e15403040c5bb62c0c53319014f8b005",
     "69701d7d9be07f5f55af0431f8baca6ba157a549",
     "69848c6c37e7ec54ab6daaa10907e3ca5a7ea6db",
     "69a2030674c1caec4f5b3b389ebebad02a596e14",
@@ -732,6 +745,7 @@
     "6a91381a429232e70fbbeaf70fa7952678ddb1b1",
     "6a9be901cbc5f318cd7685378b884ae23cdefa19",
     "6ae089cd21efa0ddbfd184492b888f294bf4ecd2",
+    "6b30b33472969a8e89ec8f9da5876073153f9a53",
     "6b35473d8b84e792a5ed39806fbbf4015c27c5ab",
     "6b7a987aaab857344308e89a40580fb2799b2b2c",
     "6b98bd8f9fd2f7fac036b6490a4ec2935e82faa1",
@@ -747,10 +761,12 @@
     "6deaa5a5e816f58d0f502ad414137afade54fa51",
     "6e0e82aca97150cdcc4cb611db7d5da902c6f9a6",
     "6e7c804203808047ad047cea2a8ba7ef064368a4",
+    "6e8c36fc7789f8da4d69c4be65b2c25575a2ce7e",
     "6e8f3874fcc715252d9047c6f84b993cc032f808",
     "6eac217550798c69c9dc8f49e2e8cde925691200",
     "6ebbf5434b50b46a9fe4748f9ede6df1d1d1a623",
     "6ec604df6fecb3989e2186549b5d4b35647243f2",
+    "6ee1dee33e4bfc63f2ee02d6b1844bbbe908de31",
     "6f06c2f8309db90b396fc2111b83a2144216d196",
     "6f0fa962c84c83366a7437e0e585ffd7b3682187",
     "6f506837167178c1acc0f0c24818269d1168acc9",
@@ -1039,6 +1055,7 @@
     "966bb2f943b12ad3a4ae3620ade2b1c3d6eb660c",
     "9707a32a25ab86a0c7570a760b4c9db8322e163a",
     "970a1fd7a329ae80d95cce70768baea1c0d3ec87",
+    "97395b3624caa9bfea6d555fcaf4a57079494036",
     "9766b1cb61a6c2bfe622787345030159e2704ff8",
     "977d926a0cb6cc70b5f1bc1c64563d503273be51",
     "97d0f350a7633f1675a465cb7c87f1c281e9d58d",
@@ -1076,6 +1093,7 @@
     "9c3b0809f74f0c451b730c0a5d432bdc0d1ff0d1",
     "9c453c522dcaf0bfb79bf75db733f4ab481aacf1",
     "9c56a6dc3e1a53487becaba7bfba9cfb773a26c3",
+    "9c7e75a27e82f37a5c200b35f571c2a067ff7d80",
     "9c8fdd72444028b83f2672da22d249b29189c8d3",
     "9cb6b26380347efa8cc7e99e8cb0fc72a2784197",
     "9cbbdb63db540ab78b0741c0afcb42afb77005af",
@@ -1112,6 +1130,7 @@
     "a0a7de90e1b94277cde41058c7decbbf47d4ff88",
     "a0ae48bb6d1bc57546b0d602424e52ca6e18aaca",
     "a0e0fec2c2b5f568672ddffd97e5dbcc17df031b",
+    "a0e7f08952367500752067865c9d4e5c8d72ed58",
     "a100926f52cebbb2f35f115949abff28f6ab09ff",
     "a117d6b1bb54dbb4a5bba48a82c1bed961357172",
     "a16e73d4742ba8fcb6f7bf442a04a4ef77aa68e7",
@@ -1350,6 +1369,7 @@
     "c4592c29f02f3405dd3f12a777b140eeaa9ac2d6",
     "c467b9a0caba5b96707731cea0004843ca91d91e",
     "c4a3a8009a6ccacf6499aae66937e08f850b0192",
+    "c574c3a36e569521de65907cd277cc980f1c2de0",
     "c57fd5a2b6878e3077018f44c66859ceabbdd453",
     "c5bad1b28f4fd9d04074ef4e3b7f4b8eae28f557",
     "c64f46e6c1f59149752aa8727ba930c3843604cd",
@@ -1470,6 +1490,7 @@
     "d7055cf95625a8277bc8fe7578db45b2b8ef4a5b",
     "d728941b42c74fd3f8fd3eea30be90d4d889e78f",
     "d731d6352918f55d3834e8589c50fbfdf587ee52",
+    "d733b25e58e0e41bcb7daaba2b18c3af1d4a78c9",
     "d7611adeedfca00e0a15168be79b53a9c39a05ff",
     "d7d751f5ed04371b5139b1a6ab4e66530a08b679",
     "d818b5ae8391ff02403333ceb9f003d8d9cd20d4",
@@ -1567,6 +1588,7 @@
     "e5f8508626b859da985d4900b0e1450e38da405e",
     "e5fc416b88a9061963b7e567ebf29b5670c72f75",
     "e637c13ffee2712988268efd0b13cc325210f0db",
+    "e65fe7ef1d85b8fb089c6bdc7e46cf2e24aba1e0",
     "e711a10e6f6053f749ace6f2ff0981be1e0ce327",
     "e744962f37c0ec0ab7ddcad1805c75e0a75e39b0",
     "e7ef829717c4341f1fda979633d5677b02df7328",
@@ -1657,6 +1679,7 @@
     "f3538b6fb36f4f58fdca64e1b764cff7fa0ed810",
     "f35eafa79e1eebfa68b630f76a03d8d4bbf8615f",
     "f371e42601c7dbb5872e939c3e00e90ab5afa188",
+    "f391a4ccef06aaf3bba0628fb9e4612c64116efd",
     "f3b5fc1f0ea1cc813e11f36343a5d2380befa06d",
     "f3cca58a72e7441b647c3c46cf718a5ff2393b69",
     "f3e0ed7cfca4e2d6764b7ba00dcd5f6244559bf1",
@@ -1952,6 +1975,7 @@
     "title::artificial analysis ranks claude opus 5 5 first in tougher coding agent index",
     "title::artificial analysis ranks seedance 2 5 and minimax h3 in video ai benchmark",
     "title::artificial analysis rebuilds aa video to rank models by real world jobs",
+    "title::artificial analysis rebuilds decision index v2 to reward ai confidence",
     "title::artificial analysis rebuilds intelligence index v5 with private coding tests",
     "title::artificial analysis rebuilds its ai capability indexes crowning claude opus 5 5",
     "title::artificial analysis ties aa agentperf scores to daily gpu rental prices",
@@ -1968,6 +1992,7 @@
     "title::autosynthdata generating training data for enterprise agents",
     "title::autotrust ai s jev 35b turns open source decisions into 204ms api calls",
     "title::autotrust ai turns gemma 4 into a 45ms calibrated decision api",
+    "title::autotrust labs jev 27b scores decisions in one token across 37 benchmarks",
     "title::autotrust s jev 27b vl beats gpt 4o and scores images in one pass",
     "title::autotrust s qwen3 8 drafter hits 48 tok s nearly 4x faster on dgx spark",
     "title::awkward saudi arabia s new ev brand takes on the u s rival it already controls",
@@ -2082,6 +2107,7 @@
     "title::cmu and idiap build synth dopaco a 1 329 hour medical ai benchmark",
     "title::co op anything lets ai agents add multiplayer to any single player game",
     "title::coding from the himalayas with an offline ai agent",
+    "title::coevo beats every rival by fixing buggy chip designs while optimizing them",
     "title::cognition acquires corridor to add security controls to devin",
     "title::cognition adds gemini 4 argon to devin at 75 off",
     "title::cognition brings devin mobile to iphone so developers code on the go",
@@ -2126,6 +2152,7 @@
     "title::context management for deep agents",
     "title::continuation vehicles complicate key person clauses",
     "title::continuation vehicles meld with fund abs",
+    "title::continuity research s tess 4 5 27b cuts local coding agent tokens by 25",
     "title::convnext tiny hits 84 accuracy with 750k downloads on hugging face",
     "title::conway research squeezes saluki s 27b model into 8 gb and beats the original",
     "title::copilotkit releases openmuse an open source personal agent with its own browser",
@@ -2466,6 +2493,7 @@
     "title::helping small businesses put ai to work",
     "title::helping teens learn plan and shape the future of ai",
     "title::here s who is falling in line for trump s super intelligence loyalty test",
+    "title::hide your slop pr descriptions behind details summary",
     "title::higgsfield lets claude build fully editable after effects projects",
     "title::higgsfield s ad multiplier turns one winning video ad into infinite variants",
     "title::higgsfield takes ai video from 1 minute to over 10",
@@ -2496,6 +2524,7 @@
     "title::how ropes gray is developing ai for transactional diligence",
     "title::how snyk turned an internal support agent into a customer feature",
     "title::how specializing the vocabulary of slms can cut inference cost by 77 in real applications",
+    "title::how stanford teaches ai native engineering mihail eric monaco",
     "title::how third moment research runs 10 000 agents for 36 hours",
     "title::how to build a model router in the harness",
     "title::how to build an investment thesis and win early stage deals according to vcs",
@@ -2529,6 +2558,7 @@
     "title::humans trains ampersand to know when staying silent helps groups more",
     "title::hume opens its audio decision api to answer any question about sound",
     "title::i m 30 i ve got one more shot reson8 s founder wants to build a european ai giant",
+    "title::ibm s granite ttm r3 runs 18 000 forecasts per second without a gpu",
     "title::ibm s tiny tspulse beats models 100x bigger across 75 datasets",
     "title::icapital on reusable digital identity as a growth lever",
     "title::idiap s abstract compression halves audio tokens without losing conversation context",
@@ -2800,6 +2830,7 @@
     "title::nebius turns token factory into runnable ai recipes for developers",
     "title::nesterov momentum escapes ai training s worst traps almost every time",
     "title::nettle raises 4 8m to expand its ai workspace for insurers",
+    "title::neuml s open source txtai hits 13k stars merging search rag and agents",
     "title::nevermind vc launches with 23 6m first close to back dual use deeptech startups",
     "title::new ai architecture challenges token by token generation",
     "title::new context engineering challenges in late 2026",
@@ -2818,7 +2849,9 @@
     "title::not just ai china is building technologies that challenge u s dominance",
     "title::nous research launches hermes agent marketplace with 976 plugins",
     "title::nous research rebuilds hermes agent pricing around always on cloud hosting",
+    "title::nous research s arete 27b strips chinese state propaganda from qwen down to 0 9",
     "title::nous research s hermes agent now builds 3d models from plain text",
+    "title::nous research s hermes agent now traces real attack paths in your code",
     "title::nous research s hermes agent trained a real robot from a single prompt",
     "title::nous research s hermes agent unifies every client behind one gateway",
     "title::nous research s hermes index ranks ai agents by score and real cost",
@@ -2862,6 +2895,7 @@
     "title::okx unites fiat and eurc liquidity in one order book for europe",
     "title::olmoearth v1 3 state of the art embeddings for the whole planet",
     "title::ondo finance launches tokenised portfolios powered by blackrock",
+    "title::one million ai engineer special how stanford teaches ai native engineering mihail eric monaco",
     "title::one model family two gold level results fine tuning nemotron for ioi and imo",
     "title::onomondo raises 100m to scale its global iot infrastructure",
     "title::open models have crossed a threshold",
@@ -2935,6 +2969,7 @@
     "title::orcarouter s orcacyber nano 1 0 lets security teams analyze malware locally",
     "title::orcarouter s orcasaq 2 shrinks a 27b security ai 71 to fit one gpu",
     "title::oriveo unifies 700 ai models across ios android and web",
+    "title::ornith drops ornith 1 5 122b open coding model claiming 84 5 on swe bench",
     "title::osaka metro university s som olp cuts classic clustering complexity from quadratic to linear",
     "title::otel 2 0 turns google s gemma 4 into a one token decision model",
     "title::our approach to eu text provenance rules",
@@ -2987,6 +3022,7 @@
     "title::princeton researchers fix costly ai training mistakes with 100x smaller learning rates",
     "title::princeton s unimate animates dragons crabs and robots with one ai model",
     "title::prism ml s ternary bonsai 2 shrinks a 9b ai model to 2 42 gb",
+    "title::prism ml squeezes a 2b vision model into 0 52 gb",
     "title::prismml runs bonsai 1 7b on smart glasses at 2x the speed",
     "title::private equity s growing complexity calls for inclusive expertise",
     "title::private funds midterm commitments",
@@ -3047,6 +3083,7 @@
     "title::revolut unveils facial recognition payments in uk",
     "title::revolut ventures to let clients invest in unlisted tech from 2027",
     "title::rewarding defenders with bigger bug bounties",
+    "title::ricursive s ripple 65b beats 975b rivals on agentic coding for 32m",
     "title::ringg s ai agents resolve up to 65 of customer calls with openai",
     "title::ripple bny expand partnership to explore tokenised trade finance",
     "title::ripple expects us 900m run rate as multi product clients triple",
@@ -3121,6 +3158,7 @@
     "title::sesame launches maya and miles as full ai agents with their own computers",
     "title::setting a new standard for responsible ai infrastructure",
     "title::sex money power or seeing eu inc come into force i put the big questions to sifted summit s moderators",
+    "title::sf confidence reality checks and ai bubble anxiety come to the rise venture salon in the alps",
     "title::sgs slam bakes semantic labels directly into 3d gaussian maps",
     "title::shadcn refreshes its database free chatbot starter past 1 000 stars",
     "title::shanghai ai lab s repro cuts reasoning tokens 47 while boosting math scores",
@@ -3147,6 +3185,7 @@
     "title::sifted s first onstage demo day",
     "title::sifted summit day one dispatched",
     "title::silent sailing noisy generators hydrogen startups powerup and h2boat tackle yachting s diesel problem",
+    "title::sim unifies agent building governance and mcp in one open source workspace",
     "title::simpson thacher snags six weil partners in private funds expansion",
     "title::singapore s nusx is coming for munich s deeptech crown with unternehmertum as its partner",
     "title::siri ai developer gemini notebook api provable inference",
@@ -3180,6 +3219,7 @@
     "title::stop counting tokens start counting what ships",
     "title::strata runs a 125b ai model on a regular gaming pc",
     "title::strawberry s charles maddock on lessons from anton osika us ambitions and how legora s junestrand helped land gc",
+    "title::streamgaze reveals every ai model fails at following human eye attention",
     "title::stripe pay launches instant business transfers in us and uk",
     "title::stryker to invest 400m in cmr surgical with option to buy it outright",
     "title::subquadratic s subq snap 1 1 ties for top ai decision model with 384k context",
@@ -3187,6 +3227,7 @@
     "title::succession why waiting too long can price out the next generation",
     "title::sullivan cromwell brings legal expertise into agreement review",
     "title::suno drops an official mcp server to generate music from any ai chat",
+    "title::suno s open source bark hits 39k stars turning text into expressive audio",
     "title::suno speech generates narration and music together in one pass",
     "title::supermemory opens company brain its slack ai bot with thousands of users",
     "title::supersonic labs ships julia 1 a tiny 144m router that classifies without retraining",
@@ -3280,6 +3321,7 @@
     "title::the uae embraces ai for kindergartners",
     "title::the uk government s 500m sovereign vc fund invests in uk security startup augur",
     "title::the vcs that could run the uk s 1bn scale up fund",
+    "title::the winners and losers of europe s fintech growth funding drought",
     "title::theo browne open sources tstack to automate the entire pr lifecycle",
     "title::there s never a right time to start why founders don t need a master plan before starting a business",
     "title::there s no magic money tree alex depledge on the budget startup lobbying and why she left the uk government",
@@ -3290,6 +3332,7 @@
     "title::this ai factory builds tiny machines from code",
     "title::this ex pleo exec plans on taking on us rivals with his ai cfo startup",
     "title::this fintech wasn t actively fundraising then it closed a 90m round at an 800m valuation",
+    "title::tinyml brings ai crop monitoring to farms too small for the cloud",
     "title::today lands 2 8m to scale its ai platform for financial advisors",
     "title::together ai lets developers run custom ai training without managing gpus",
     "title::top 7 most innovative swiss fintechs bilanz ranking 2027",
@@ -3321,6 +3364,7 @@
     "title::ubs ranks 6th globally in ai banking maturity",
     "title::ubs to exit fund administration through expanded northern trust deal",
     "title::uc riverside s semloc beats classic bug finders by 36 points using llms",
+    "title::ucl spinouts looking to raise",
     "title::uk ai minister working extremely rapidly on non compete changes",
     "title::uk and germany launch industrial tech corridor to accelerate ai and deeptech growth",
     "title::uk budget capital gains work visas and young entrepreneur allowances",
@@ -3365,6 +3409,7 @@
     "title::verso raises 6m to bring consumer intelligence into business decision making",
     "title::vessla exits stealth with 3 3m to bring ai agents to property management",
     "title::vib2ecg turns chest vibrations into full 12 lead heart readings",
+    "title::videozerobench exposes leading video ai models scoring near zero on visual grounding",
     "title::vilnius based holo raises 5m to bring ai powered marketing to small businesses",
     "title::visa and mesh partner on merchant payments from crypto wallets",
     "title::vitvio brings ai powered surgical operating system to poland in uck gda sk partnership",
@@ -3377,6 +3422,7 @@
     "title::vo van phuc s 135m vietnamese encoder hits 850k monthly downloads",
     "title::voice ai startup vocca raises 20m to automate patient phone calls",
     "title::voltaback raises 2 8m to scale ev charging reimbursement across europe",
+    "title::voyager s vork gives ai coding agents a full 3d gpu renderer",
     "title::wangp runs alibaba s wan 2 1 video ai on 6 gb gpus",
     "title::waymo raises us 5 billion through its first debt financing",
     "title::we build them and sell them monzo s sale talks reignite fears over britain s tech exit problem",
@@ -3469,54 +3515,6 @@
   ],
   "recent_order": [
     {
-      "date": "2026-11-04",
-      "title": "Anthropic's FlashProve Cryptographically Proves Which AI Model Answered You"
-    },
-    {
-      "date": "2026-11-04",
-      "title": "Prime Intellect Audit Reveals AI Benchmarks Are Quietly Lying About Model Rankings"
-    },
-    {
-      "date": "2026-11-04",
-      "title": "LangSmith BYOC is now available on AWS, Azure, and Google Cloud"
-    },
-    {
-      "date": "2026-11-04",
-      "title": "Mistral AI Drops Mistral Large 4, a 1T Open-Weight Coding Beast"
-    },
-    {
-      "date": "2026-11-04",
-      "title": "Artificial Analysis Rebuilds Its AI Capability Indexes, Crowning Claude Opus 5.5"
-    },
-    {
-      "date": "2026-11-04",
-      "title": "Ai2's StateBench Catches Frontier Models Failing at 13% on Long State Tracking"
-    },
-    {
-      "date": "2026-11-04",
-      "title": "How \u201creverse game theory\u201d could keep AI agents in check"
-    },
-    {
-      "date": "2026-11-04",
-      "title": "How We Optimized Browser Use for Deep Agents"
-    },
-    {
-      "date": "2026-11-04",
-      "title": "Why human insight is a strategic advantage for building better agents"
-    },
-    {
-      "date": "2026-11-04",
-      "title": "Sarvam's Prism Turns a 105B Open Model Into a 44ms Decision Engine"
-    },
-    {
-      "date": "2026-11-04",
-      "title": "Lovable apps expose sensitive user data, researchers find"
-    },
-    {
-      "date": "2026-11-04",
-      "title": "Deeptech VCs are still too risk-averse with spinouts, and it\u2019s costing them, say Europe\u2019s leading spinout investors"
-    },
-    {
       "date": "2026-11-05",
       "title": "Sequoia to close London office, cut Europe team"
     },
@@ -3559,11 +3557,30 @@
     {
       "date": "2026-11-06",
       "title": "Parallel's PWS-Decisions Benchmark Exposes OpenAI Falling Below Random Accuracy"
+    },
+    {
+      "date": "2026-11-09",
+      "title": "Artificial Analysis Rebuilds Decision Index v2 to Reward AI Confidence"
+    },
+    {
+      "date": "2026-11-09",
+      "title": "IBM's Granite-TTM-R3 Runs 18,000 Forecasts per Second Without a GPU"
+    },
+    {
+      "date": "2026-11-09",
+      "title": "Sim Unifies Agent Building, Governance, and MCP in One Open-Source Workspace"
+    },
+    {
+      "date": "2026-11-09",
+      "title": "The winners and losers of Europe's fintech growth funding drought"
+    },
+    {
+      "date": "2026-11-09",
+      "title": "SF confidence, reality checks and AI bubble anxiety come to the Rise venture salon in the Alps"
     }
   ],
-  "last_sent": "2026-11-06",
+  "last_sent": "2026-11-09",
   "recent_explainers": [
-    "Calibrated probabilities",
     "Reinforcement Learning",
     "Open-weight models",
     "KV Cache",
@@ -3582,6 +3599,7 @@
     "Tokens",
     "AI Benchmark",
     "RAG",
-    "AI Agents"
+    "AI Agents",
+    "MCP"
   ]
 }
